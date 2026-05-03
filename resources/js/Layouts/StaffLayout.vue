@@ -9,7 +9,7 @@ const isSidebarOpen = ref(true);
 
 const menuItems = [
     { name: 'Dashboard', icon: 'fa-chart-line', route: 'staff.dashboard' },
-    { name: 'Input Donasi', icon: 'fa-exchange-alt', route: '#' },
+    { name: 'Input Donasi Cash', icon: 'fa-exchange-alt', route: 'donasi-tunai.index' },
     { name: 'Input Pengeluaran', icon: 'fa-users', route: '#' },
     { name: 'Info Laporan Transaksi', icon: 'fa-hand-holding-heart', route: '#' },
 ];

@@ -24,7 +24,6 @@ defineProps({
                     <a href="#" class="hover:text-orange-500 transition">Berita</a>
                     <a href="#" class="hover:text-orange-500 transition">Artikel</a>
                     <a href="#" class="hover:text-orange-500 transition">Publikasi</a>
-                    <Link :href="route('donatur.index')">Daftar Donatur</Link>
                 </div>
 
                 <div class="flex items-center space-x-4">

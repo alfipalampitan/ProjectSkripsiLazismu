@@ -20,6 +20,8 @@ class Donation extends Model
         'email',      // Tambahkan kolom email
         'keterangan', // Tambahkan kolom keterangan
         'program_id', // Tambahkan kolom program_id
-        'kategori'    // Tambahkan kolom kategori
+        'kategori' ,   // Tambahkan kolom kategori
+        'type',       // Tambahkan kolom type (cash/transfer)
+        'penerima'    // Tambahkan kolom penerima (opsional)
     ];
 }
