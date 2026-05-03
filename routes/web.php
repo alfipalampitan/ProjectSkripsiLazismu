@@ -1,11 +1,15 @@
 <?php
 
+use App\Http\Controllers\Admin\LaporanController;
 use App\Http\Controllers\Admin\ProgramManagerController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DonaturController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PenggunaController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgramController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\TransaksiController;
 use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -24,13 +28,12 @@ Route::get('/pilih-program', [ProgramController::class, 'index'])->name('pilih.p
 
 Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
 
-    Route::get('/admin/dashboard', function () {
-        return Inertia::render('Admin/Dashboard');
-    })->name('admin.dashboard');
+    Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
-    Route::get('/transaksi', function () {
-        return Inertia::render('Admin/Transaksi');
-    })->name('transaksi');
+    // Ganti route lama Anda dengan ini
+    Route::get('/transaksi', [TransaksiController::class, 'index'])->name('transaksi');
+    Route::put('/donasi/{id}', [TransaksiController::class, 'update'])->name('donasi.update');
+    Route::delete('/donasi/{id}', [TransaksiController::class, 'destroy'])->name('donasi.destroy');
     // Route Kelola Pengguna
     Route::get('/pengguna', function () {
         return Inertia::render('Admin/Pengguna', [
@@ -49,6 +52,17 @@ Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     Route::get('/programs', [ProgramManagerController::class, 'index'])->name('programs.index');
     Route::get('/programs/create', [ProgramManagerController::class, 'create'])->name('programs.create');
     Route::post('/programs', [ProgramManagerController::class, 'store'])->name('programs.store');
+    Route::post('/programs-update/{id}', [ProgramManagerController::class, 'update_manual'])->name('programs.update_manual');
+    Route::delete('/programs/{id}', [ProgramManagerController::class, 'destroy'])->name('programs.destroy');
+
+    Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan.index');
+    Route::get('/laporan/download/{bulan}', [LaporanController::class, 'downloadPDF'])->name('laporan.download');
+
+    // Halaman tampil
+    Route::get('/pengaturan', [SettingController::class, 'index'])->name('settings.index');
+
+    // Proses simpan
+    Route::post('/pengaturan/update', [SettingController::class, 'update'])->name('settings.update');
 
 });
 

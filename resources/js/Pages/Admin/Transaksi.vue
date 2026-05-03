@@ -1,35 +1,84 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { useForm } from '@inertiajs/vue3';
 import { Head } from '@inertiajs/vue3';
-import { ref } from 'vue';
-import axios from 'axios';
+import { ref, computed } from 'vue';
 import Swal from 'sweetalert2';
+import axios from 'axios';
 
-// Data Dummy untuk tabel transaksi
-const transaksi = ref([
-    { tanggal: '12-04-2026', jenis: 'Zakat', kategori: 'Zakat Mal', keterangan: 'Pembayaran via BSI' },
-    { tanggal: '13-04-2026', jenis: 'Infaq', kategori: 'Infaq Dakwah', keterangan: 'Hamba Allah' },
-    { tanggal: '14-04-2026', jenis: 'Sodaqoh', kategori: 'Bantuan Bencana', keterangan: 'Transfer Mandiri' },
-    { tanggal: '15-04-2026', jenis: 'Zakat', kategori: 'Zakat Fitrah', keterangan: 'Tunai di Kantor' },
-    { tanggal: '16-04-2026', jenis: 'Infaq', kategori: 'Kemanusiaan', keterangan: 'Program Ramadhan' },
-]);
+const props = defineProps({
+    donatur: Array,
+});
 
 // State untuk Modal & Form
 const isModalOpen = ref(false);
 const loading = ref(false);
+const isEditing = ref(false);
 
-const form = ref({
+
+
+// Ganti const form = ref(...) menjadi:
+const form = useForm({
+    id: null, // Tambahkan ID untuk keperluan edit/hapus
     nama: '',
     nomor_hp: '',
     email: '',
     nominal: '',
     jenis: 'Zakat',
     keterangan: '',
-    is_anonim: false // State untuk checkbox anonim
+    is_anonim: false,
+    // Tambahkan field yang mungkin ada di database kamu agar tidak undefined
+    kategori: '',
+    amount: ''
 });
 
-const bukaModal = () => isModalOpen.value = true;
+const bukaModal = () => {
+    isEditing.value = false; // Reset ke mode tambah
+    form.reset();
+    isModalOpen.value = true;
+};
 const tutupModal = () => isModalOpen.value = false;
+
+const editDonasi = (item) => {
+    isEditing.value = true;
+
+    // Masukkan data dari tabel ke dalam form
+    form.id = item.id;
+    form.nama = item.nama || item.user_name;
+    form.email = item.email;
+    form.nomor_hp = item.nomor_hp;
+    form.kategori = item.kategori;
+    form.amount = item.amount;
+    form.keterangan = item.keterangan;
+
+    // Buka modal edit
+    isModalOpen.value = true;
+};
+
+// --- TAMBAHKAN FUNGSI INI ---
+const updateDonasi = () => {
+    loading.value = true;
+
+    // Menggunakan Inertia untuk mengirim data ke Laravel
+    form.put(route('donasi.update', form.id), {
+        onSuccess: () => {
+            tutupModal();
+            Swal.fire({
+                title: 'Berhasil!',
+                text: 'Data donasi telah diperbarui.',
+                icon: 'success',
+                confirmButtonColor: '#f97316',
+            });
+        },
+        onError: (err) => {
+            console.error(err);
+            Swal.fire('Gagal!', 'Terjadi kesalahan saat menyimpan perubahan.', 'error');
+        },
+        onFinish: () => {
+            loading.value = false;
+        }
+    });
+};
 
 const errors = ref({
     nama: '',
@@ -39,31 +88,29 @@ const errors = ref({
 
 // Fungsi Utama Midtrans
 const prosesDonasi = async () => {
-
-    // Reset errors setiap kali tombol diklik
     errors.value = { nama: '', nomor_hp: '', nominal: '' };
-
     let isValid = true;
 
-    if (!form.value.is_anonim && !form.value.nama) {
+    // Hapus semua .value di bawah ini
+    if (!form.is_anonim && !form.nama) {
         errors.value.nama = 'Nama wajib diisi jika tidak anonim';
         isValid = false;
     }
-    if (!form.value.nomor_hp) {
+    if (!form.nomor_hp) {
         errors.value.nomor_hp = 'Nomor HP wajib diisi untuk konfirmasi';
         isValid = false;
     }
-    if (!form.value.nominal || form.value.nominal < 10000) {
+    if (!form.nominal || form.nominal < 10000) {
         errors.value.nominal = 'Minimal donasi adalah Rp 10.000';
         isValid = false;
     }
-    if (!isValid) return; // Berhenti jika ada yang tidak valid
+    if (!isValid) return;
 
     loading.value = true;
 
     try {
         // Logika untuk menentukan nama yang dikirim ke server
-        const namaDonatur = form.value.is_anonim ? 'Hamba Allah' : form.value.nama;
+        const namaDonatur = form.value.is_anonim ? 'Hamba Allah' : form.nama;
 
         // 1. Minta Snap Token dari Laravel
         const response = await axios.post('/payment/token', {
@@ -127,10 +174,78 @@ const prosesDonasi = async () => {
     }
 };
 
-const tambahTransaksi = () => {
-    // Logika di sini: bisa buka modal atau route ke halaman form
-    console.log('Buka form tambah transaksi');
+// 1. Fungsi Format Rupiah
+const formatRupiah = (number) => {
+    if (number === null || number === undefined) return 'Rp 0';
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+    }).format(number);
 };
+
+// 2. Fungsi Format Tanggal
+const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
+};
+
+// --- LOGIKA HAPUS ---
+const deleteDonasi = (id) => {
+    Swal.fire({
+        title: 'Apakah Anda yakin?',
+        text: "Data donasi ini akan dihapus permanen!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#f97316', // Warna orange
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Pastikan route 'donasi.destroy' sesuai dengan nama route di web.php kamu
+            form.delete(route('donasi.destroy', id), {
+                onSuccess: () => {
+                    Swal.fire('Terhapus!', 'Data berhasil dihapus.', 'success');
+                },
+                onError: () => {
+                    Swal.fire('Gagal!', 'Terjadi kesalahan saat menghapus data.', 'error');
+                }
+            });
+        }
+    });
+};
+
+// 2. Pastikan variabel ini sudah dibuat
+const searchQuery = ref('');
+const filterJenis = ref('Semua Jenis');
+const filteredDonatur = computed(() => {
+    // 1. Pastikan props.donatur ada datanya
+    if (!props.donatur) return [];
+
+    return props.donatur.filter(item => {
+        // --- LOGIKA PENCARIAN (Berdasarkan Nama/Email) ---
+        // Kita ambil data nama/email dan ubah ke huruf kecil agar pencarian tidak sensitif huruf besar
+        const query = searchQuery.value.toLowerCase();
+        const nama = (item.nama || item.user_name || '').toLowerCase();
+        const email = (item.email || '').toLowerCase();
+
+        const matchSearch = nama.includes(query) || email.includes(query);
+
+        // --- LOGIKA FILTER KATEGORI ---
+        const matchKategori = filterJenis.value === 'Semua Jenis' || item.kategori === filterJenis.value;
+
+        // --- GABUNGKAN KEDUA KONDISI ---
+        // Hanya kembalikan data yang lolos pencarian DAN lolos filter kategori
+        return matchSearch && matchKategori;
+    });
+});
 
 </script>
 
@@ -158,28 +273,26 @@ const tambahTransaksi = () => {
             </div>
 
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div class="relative w-full md:w-1/3">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                <div class="relative w-full max-w-md">
+                    <!-- Icon Pencarian (Opsional agar lebih cantik) -->
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
                     </span>
-                    <input type="text" placeholder="Search..."
+
+                    <!-- Input Search Utama -->
+                    <input v-model="searchQuery" type="text" placeholder="Cari nama atau email..."
                         class="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-orange-500 focus:border-orange-500 outline-none transition-all" />
                 </div>
 
                 <div class="flex gap-2">
-                    <select
+                    <select v-model="filterJenis"
                         class="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600 focus:ring-orange-500 outline-none">
-                        <option>Semua Jenis</option>
-                        <option>Zakat</option>
-                        <option>Infaq</option>
-                        <option>Sodaqoh</option>
-                    </select>
-                    <select
-                        class="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm text-gray-600 focus:ring-orange-500 outline-none">
-                        <option>Semua Kategori</option>
-                        <option>Kemanusiaan</option>
-                        <option>Pendidikan</option>
-                        <option>Dakwah</option>
+                        <option value="Semua Jenis">Semua Jenis</option>
+                        <option value="Zakat">Zakat</option>
+                        <option value="Infaq">Infaq</option>
+                        <option value="Wakaf">Wakaf</option>
+                        <option value="Pilar">Pilar</option>
+                        <option value="Qurban">Qurban</option>
                     </select>
                 </div>
             </div>
@@ -191,9 +304,11 @@ const tambahTransaksi = () => {
                             <tr>
                                 <th class="px-6 py-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Tanggal
                                 </th>
+                                <th class="px-6 py-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Donatur
+                                </th>
                                 <th class="px-6 py-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Jenis
                                 </th>
-                                <th class="px-6 py-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Kategori
+                                <th class="px-6 py-4 font-bold text-gray-700 uppercase text-xs tracking-wider">Nominal
                                 </th>
                                 <th class="px-6 py-4 font-bold text-gray-700 uppercase text-xs tracking-wider">
                                     Keterangan</th>
@@ -204,28 +319,62 @@ const tambahTransaksi = () => {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
-                            <tr v-for="(item, index) in transaksi" :key="index"
+                            <!-- Iterasi menggunakan data 'donatur' -->
+                            <tr v-for="item in filteredDonatur" :key="item.id"
                                 class="hover:bg-orange-50/50 transition-colors">
-                                <td class="px-6 py-4 text-gray-600 font-medium">{{ item.tanggal }}</td>
+
+                                <!-- Tanggal (menggunakan helper formatDate) -->
+                                <td class="px-6 py-4 text-gray-600 font-medium text-sm">
+                                    {{ formatDate(item.updated_at) }}
+                                </td>
+
+                                <!-- Nama Donatur -->
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-bold text-gray-800">{{ item.nama || item.user_name }}</div>
+                                    <div class="text-xs text-gray-400">{{ item.email || '-' }}</div>
+                                </td>
+
+                                <!-- Jenis / Kategori dengan Badge Dinamis -->
                                 <td class="px-6 py-4">
                                     <span :class="{
-                                        'bg-orange-100 text-orange-700': item.jenis === 'Zakat',
-                                        'bg-blue-100 text-blue-700': item.jenis === 'Infaq',
-                                        'bg-green-100 text-green-700': item.jenis === 'Sodaqoh'
+                                        'bg-orange-100 text-orange-700': item.kategori === 'Zakat',
+                                        'bg-blue-100 text-blue-700': item.kategori === 'Infaq',
+                                        'bg-green-100 text-green-700': item.kategori === 'Shadaqah' || item.kategori === 'Sodaqoh',
+                                        'bg-gray-100 text-gray-700': !['Zakat', 'Infaq', 'Sodaqoh', 'Shadaqah'].includes(item.kategori)
                                     }" class="px-3 py-1 rounded-lg text-xs font-bold uppercase">
-                                        {{ item.jenis }}
+                                        {{ item.kategori || 'Donasi' }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-gray-600 italic font-semibold">{{ item.kategori }}</td>
-                                <td class="px-6 py-4 text-gray-500">{{ item.keterangan }}</td>
+
+                                <!-- Nominal (menggunakan helper formatRupiah) -->
+                                <td class="px-6 py-4 text-green-600 font-bold text-sm">
+                                    {{ formatRupiah(item.amount) }}
+                                </td>
+
+                                <!-- Keterangan -->
+                                <td class="px-6 py-4 text-gray-500 text-sm max-w-xs truncate">
+                                    {{ item.keterangan || '-' }}
+                                </td>
+
+                                <!-- Aksi -->
                                 <td class="px-6 py-4 text-center">
-                                    <button class="text-blue-500 hover:text-blue-700 mr-3">
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                    </button>
-                                    <button @click="form.nominal = 50000; prosesDonasi()"
-                                        class="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs font-bold">
-                                        Bayar
-                                    </button>
+                                    <div class="flex justify-center gap-2">
+                                        <button @click="editDonasi(item)"
+                                            class="text-blue-500 hover:text-blue-700 transition">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button @click="deleteDonasi(item.id)"
+                                            class="text-red-500 hover:text-red-700 transition">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- State jika data kosong -->
+                            <tr v-if="donatur.length === 0">
+                                <td colspan="6" class="px-6 py-10 text-center text-gray-400 italic">
+                                    Belum ada data donasi yang tersedia.
                                 </td>
                             </tr>
                         </tbody>
@@ -240,7 +389,10 @@ const tambahTransaksi = () => {
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl flex flex-col max-h-[90vh] relative">
 
             <div class="p-6 border-b border-gray-100 flex justify-between items-center">
-                <h2 class="text-xl font-bold text-gray-800">Input Donasi Baru</h2>
+                <!-- Judul dinamis berdasarkan status isEditing -->
+                <h2 class="text-xl font-bold text-gray-800">
+                    {{ isEditing ? 'Edit Data Donasi' : 'Input Donasi Baru' }}
+                </h2>
                 <button @click="tutupModal" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <i class="fa-solid fa-xmark text-2xl"></i>
                 </button>
@@ -280,10 +432,15 @@ const tambahTransaksi = () => {
                             class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 outline-none transition-all" />
                     </div>
 
+                    <!-- Cari bagian input nominal kamu -->
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Nominal (Rp)</label>
-                        <input v-model="form.nominal" type="number" placeholder="Min. 10.000"
-                            class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-orange-500 outline-none transition-all" />
+                        <label class="block text-sm font-medium text-gray-700">Nominal Donasi</label>
+                        <input v-model="form.nominal" type="number"
+                            class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                            :class="{ 'bg-gray-100 cursor-not-allowed': isEditing }" :readonly="isEditing" />
+                        <p v-if="isEditing" class="text-xs text-gray-500 mt-1">
+                            *Nominal tidak dapat diubah untuk menjaga integritas data.
+                        </p>
                     </div>
 
                     <div>
@@ -309,9 +466,14 @@ const tambahTransaksi = () => {
                     class="flex-1 px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-600 font-bold hover:bg-gray-100 transition-all">
                     Batal
                 </button>
-                <button @click="prosesDonasi" :disabled="loading"
+
+                <!-- Tombol ini akan memanggil fungsi yang berbeda & teks yang berbeda -->
+                <button @click="isEditing ? updateDonasi() : prosesDonasi()" :disabled="loading"
                     class="flex-1 px-4 py-3 rounded-xl bg-orange-500 text-white font-bold hover:bg-orange-600 shadow-lg shadow-orange-200 transition-all disabled:opacity-50">
-                    {{ loading ? 'Memproses...' : 'Bayar Sekarang' }}
+                    <span v-if="loading">Memproses...</span>
+                    <span v-else>
+                        {{ isEditing ? 'Simpan Perubahan' : 'Bayar Sekarang' }}
+                    </span>
                 </button>
             </div>
         </div>

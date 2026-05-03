@@ -85,7 +85,7 @@ const formatDate = (dateString) => {
 
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <span class="px-2 py-1 rounded-md text-xs font-bold bg-orange-100 text-orange-700 uppercase">
-                                        {{ item.jenis || 'Donasi' }}
+                                        {{ item.kategori || 'Donasi' }}
                                     </span>
                                 </td>
 

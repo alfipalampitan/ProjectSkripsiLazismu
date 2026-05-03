@@ -1,10 +1,11 @@
 <script setup>
 import { ref, reactive, watch } from 'vue';
 import axios from 'axios';
+import Swal from 'sweetalert2'; // Pastikan sudah install: npm install sweetalert2
 
 const props = defineProps({
     isOpen: Boolean,
-    program: Object // Menerima object program secara dinamis
+    program: Object
 });
 
 const emit = defineEmits(['close']);
@@ -14,44 +15,102 @@ const form = reactive({
     nominal: '',
     nama: '',
     nomor_hp: '',
+    email: '',
     is_anonim: false,
     keterangan: ''
 });
+
+const submitDonasi = async () => {
+    // 1. Validasi Minimal Donasi dengan SweetAlert
+    if (!form.nominal || form.nominal < 10000) {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Nominal Kurang',
+            text: 'Minimal donasi adalah Rp 10.000',
+            confirmButtonColor: '#f97316',
+        });
+    }
+
+    loading.value = true;
+
+    // 2. Loading State saat memproses Token
+    Swal.fire({
+        title: 'Menyiapkan Pembayaran',
+        text: 'Mohon tunggu sebentar...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    try {
+        const response = await axios.post('/payment/token', {
+            program_id: props.program.id,
+            total: form.nominal,
+            nama: form.is_anonim ? 'Hamba Allah' : form.nama,
+            nomor_hp: form.nomor_hp,
+            email: form.email,
+            keterangan: form.keterangan
+        });
+
+        // Tutup loading Swal sebelum membuka Midtrans Snap
+        Swal.close();
+
+        window.snap.pay(response.data.token, {
+            onSuccess: (result) => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Pembayaran Berhasil',
+                    text: 'Terima kasih atas kebaikan Anda!',
+                    showConfirmButton: false,
+                    confirmButtonColor: '#f97316',
+                    timer: 2000
+                }).then(() => {
+                    location.reload();
+                });
+            },
+            onPending: (result) => {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Menunggu Pembayaran',
+                    text: 'Silakan selesaikan pembayaran sesuai instruksi.',
+                    confirmButtonColor: '#f97316',
+                });
+            },
+            onError: (result) => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Pembayaran Gagal',
+                    text: 'Terjadi kesalahan saat memproses transaksi.',
+                    confirmButtonColor: '#f97316',
+                });
+            }
+        });
+
+    } catch (error) {
+        console.error(error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'Gagal menghubungi server. Silakan coba lagi nanti.',
+            confirmButtonColor: '#f97316',
+        });
+    } finally {
+        loading.value = false;
+    }
+};
 
 // Reset form saat modal ditutup/dibuka
 watch(() => props.isOpen, (val) => {
     if (!val) {
         form.nominal = '';
         form.nama = '';
+        form.nomor_hp = '';
+        form.email = '';
         form.is_anonim = false;
+        form.keterangan = '';
     }
 });
-
-const submitDonasi = async () => {
-    if (!form.nominal || form.nominal < 10000) return alert('Minimal donasi Rp 10.000');
-
-    loading.value = true;
-    try {
-        const response = await axios.post('/payment/token', {
-            program_id: props.program.id, // ID Program masuk secara otomatis
-            total: form.nominal,
-            nama: form.is_anonim ? 'Hamba Allah' : form.nama,
-            nomor_hp: form.nomor_hp,
-            keterangan: form.keterangan
-        });
-
-        window.snap.pay(response.data.token, {
-            onSuccess: (result) => { location.reload(); },
-            onPending: (result) => { alert('Menunggu pembayaran...'); },
-            onError: (result) => { alert('Pembayaran gagal!'); }
-        });
-    } catch (error) {
-        console.error(error);
-        alert('Gagal memproses transaksi.');
-    } finally {
-        loading.value = false;
-    }
-};
 
 // Di dalam <script setup>
 const presets = [50000, 100000, 200000, 500000];
@@ -133,6 +192,8 @@ const setNominal = (amount) => {
 
                     <input v-model="form.nomor_hp" type="text" placeholder="Nomor WhatsApp (Aktif)"
                         class="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500">
+                    <input v-model="form.email" type="email" placeholder="Email"
+                        class="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500">
 
                     <textarea v-model="form.keterangan" placeholder="Tulis doa atau pesan khusus..."
                         class="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 h-24"></textarea>
@@ -149,6 +210,12 @@ const setNominal = (amount) => {
         </div>
     </Transition>
 </template>
+
+<style>
+    .swal2-loader {
+        border-color: #f97316 transparent #f97316 transparent !important;
+    }
+</style>
 
 <style scoped>
 .fade-enter-active,

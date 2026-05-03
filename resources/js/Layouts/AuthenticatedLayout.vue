@@ -1,25 +1,72 @@
 <script setup>
-import { ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import { ref, onMounted, watch } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 
-const isSidebarOpen = ref(true);
+// 1. Ambil status terakhir dari localStorage, jika tidak ada baru pakai default
+// Kita gunakan fungsi pembantu agar tidak error saat SSR (Server Side Rendering)
+const getInitialSidebarState = () => {
+    if (typeof window === 'undefined') return true;
+    const savedState = localStorage.getItem('sidebar_open');
+    // Jika ada di storage, pakai itu. Jika tidak, cek lebar layar.
+    return savedState !== null ? JSON.parse(savedState) : window.innerWidth > 768;
+};
+
+const isSidebarOpen = ref(getInitialSidebarState());
+
+// 2. Pantau perubahan isSidebarOpen dan simpan ke localStorage
+watch(isSidebarOpen, (newValue) => {
+    localStorage.setItem('sidebar_open', JSON.stringify(newValue));
+});
 
 const menuItems = [
     { name: 'Dashboard', icon: 'fa-chart-line', route: 'admin.dashboard' },
     { name: 'Transaksi', icon: 'fa-exchange-alt', route: 'transaksi' },
     { name: 'Kelola Pengguna', icon: 'fa-users', route: 'pengguna' },
     { name: 'Program Donasi', icon: 'fa-hand-holding-heart', route: 'programs.index' },
-    { name: 'Laporan', icon: 'fa-file-invoice', route: '#' },
-    { name: 'Pengaturan', icon: 'fa-cog', route: '#' },
+    { name: 'Laporan', icon: 'fa-file-invoice', route: 'laporan.index' },
+    { name: 'Pengaturan', icon: 'fa-cog', route: 'settings.index' },
 ];
+
+const page = usePage();
+watch(() => page.url, () => {
+    // Khusus mobile, kita tetap ingin sidebar otomatis tutup saat pindah halaman
+    if (window.innerWidth <= 768) {
+        isSidebarOpen.value = false;
+    }
+});
+
+onMounted(() => {
+    window.addEventListener('resize', () => {
+        // Jika layar berubah ke ukuran desktop, biarkan mengikuti state terakhir
+        // Tapi jika ke mobile, biasanya lebih baik ditutup
+        if (window.innerWidth <= 768) {
+            isSidebarOpen.value = false;
+        }
+    });
+});
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-100 flex">
-        <aside :class="['bg-white shadow-xl transition-all duration-300 flex flex-col z-50', isSidebarOpen ? 'w-64' : 'w-20']">
+    <div class="min-h-screen bg-gray-100 flex relative">
+        
+        <!-- Overlay untuk Mobile: Muncul saat sidebar terbuka di layar kecil -->
+        <div 
+            v-if="isSidebarOpen" 
+            @click="isSidebarOpen = false" 
+            class="fixed inset-0 bg-gray-900/50 z-40 md:hidden transition-opacity"
+        ></div>
+
+        <!-- Sidebar -->
+        <aside 
+            :class="[
+                'bg-white shadow-xl transition-all duration-300 flex flex-col z-50',
+                // Logika Mobile: Fixed position & Slide effect
+                'fixed inset-y-0 left-0 transform md:relative md:translate-x-0',
+                isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 md:w-20'
+            ]"
+        >
             <div class="p-6 flex items-center justify-center border-b border-gray-100 h-16">
                 <Link :href="route('admin.dashboard')" class="flex items-center">
                     <div v-if="isSidebarOpen" class="text-2xl font-black text-orange-500 tracking-tighter">
@@ -52,13 +99,14 @@ const menuItems = [
             </div>
         </aside>
 
+        <!-- Main Content -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-8 z-40">
+            <header class="bg-white shadow-sm h-16 flex items-center justify-between px-4 md:px-8 z-30">
                 <div class="flex items-center">
-                    <button @click="isSidebarOpen = !isSidebarOpen" class="text-gray-500 hover:text-orange-500 transition-colors p-2">
+                    <button @click="isSidebarOpen = !isSidebarOpen" class="text-gray-500 hover:text-orange-500 transition-colors p-2 focus:outline-none">
                         <i class="fa-solid fa-bars-staggered text-xl"></i>
                     </button>
-                    <h2 class="ml-4 font-semibold text-gray-800 hidden md:block">
+                    <h2 class="ml-2 md:ml-4 font-semibold text-gray-800 truncate">
                         <slot name="header" />
                     </h2>
                 </div>
@@ -69,7 +117,8 @@ const menuItems = [
                             <template #trigger>
                                 <span class="inline-flex rounded-md">
                                     <button type="button" class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none">
-                                        {{ $page.props.auth.user.name }}
+                                        <span class="hidden sm:inline">{{ $page.props.auth.user.name }}</span>
+                                        <i class="fa-solid fa-circle-user text-xl sm:hidden text-orange-500"></i>
                                         <svg class="-me-0.5 ms-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                             <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                                         </svg>
@@ -85,7 +134,7 @@ const menuItems = [
                 </div>
             </header>
 
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6 md:p-10">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-4 md:p-8">
                 <slot />
             </main>
         </div>
@@ -93,11 +142,15 @@ const menuItems = [
 </template>
 
 <style>
-/* Load FontAwesome untuk icon */
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 body {
     font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Mencegah scroll pada body saat sidebar mobile terbuka */
+.overflow-hidden {
+    overflow: hidden;
 }
 </style>

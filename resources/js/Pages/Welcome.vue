@@ -16,7 +16,7 @@ defineProps({
     <div class="bg-gray-50 font-sans text-gray-900 antialiased">
         <nav class="bg-white shadow-md sticky top-0 z-50">
             <div class="container mx-auto px-6 py-3 flex justify-between items-center">
-                <img src="/images/Lazismu.png" alt="Logo" class="h-12">
+                <img :src="$page.props.system.logo" alt="Logo" class="h-12" />
 
                 <div class="hidden md:flex space-x-8 text-gray-700 font-medium">
                     <a href="#" class="hover:text-orange-500 transition">Tentang</a>
