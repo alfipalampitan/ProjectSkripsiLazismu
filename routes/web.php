@@ -68,7 +68,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     // Proses simpan
     Route::post('/pengaturan/update', [SettingController::class, 'update'])->name('settings.update');
 
-    Route::resource('pilar-form', PilarFormController::class)->names([
+    Route::resource('admin/pilar-form', PilarFormController::class)->names([
         'index'   => 'pilar-form.index',
         'create'  => 'pilar-form.create',
         'store'   => 'pilar-form.store',
