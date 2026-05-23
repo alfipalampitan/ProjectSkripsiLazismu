@@ -13,25 +13,39 @@ class ProgramController extends Controller
     {
         $kategori = $request->query('kategori');
 
-        $programs = Program::when($kategori, function ($query) use ($kategori) {
+        // Base Query agar kita tidak menulis ulang logika withSum dan withCount
+        $baseQuery = Program::when($kategori, function ($query) use ($kategori) {
             return $query->where('kategori', $kategori);
-        }, function ($query) {
-            return $query; // Tambahkan argumen ke-3 ini untuk memuaskan Intelephense
         })
-            // Tambahkan ini: Menghitung jumlah 'amount' dari relasi 'donations' yang statusnya 'success'
-            // Hasilnya akan tersimpan di field 'donations_sum_amount' atau kita beri alias 'terkumpul'
-            ->withSum(['donations as terkumpul' => function ($query) {
-                $query->where('status', 'success');
-            }], 'amount')
-            ->withCount(['donations as donatur_count' => function ($query) {
-                $query->where('status', 'success');
-            }])
-            ->latest()
-            ->get();
+        ->withSum(['donations as terkumpul' => function ($query) {
+            $query->where('status', 'success');
+        }], 'amount')
+        ->withCount(['donations as donatur_count' => function ($query) {
+            $query->where('status', 'success');
+        }])
+        ->latest();
+
+        // 1. Ambil data untuk Desktop (Tetap dibatasi 4 data per halaman)
+        // Kita gunakan clone agar query utamanya tidak rusak untuk query mobile bawahnya
+        $programs = (clone $baseQuery)->paginate(4)->withQueryString();
+
+        // 2. Ambil data untuk Mobile Slider (Ambil SEMUA data tanpa di-paginate)
+        $semuaProgramMobile = $baseQuery->get();
+
+        // 3. Mengikuti logika finansial global bawaan Anda
+        $totalMasuk = Donation::where('status', 'success')->sum('amount');
+        $totalKeluar = 0;
+        $totalDonaturGlobal = Donation::where('status', 'success')->count();
 
         return inertia('Donasi/PilihProgram', [
             'programs' => $programs,
+            'semuaProgramMobile' => $semuaProgramMobile, // <--- Data baru terkirim ke Vue!
             'kategoriAktif' => $kategori,
+
+            // Oper data gabungan ke view frontend
+            'totalMasuk' => (int) $totalMasuk,
+            'totalKeluar' => (int) $totalKeluar,
+            'totalDonaturGlobal' => (int) $totalDonaturGlobal,
         ]);
     }
 
@@ -63,4 +77,6 @@ class ProgramController extends Controller
             'donatur' => $donatur,
         ]);
     }
+    
 }
+

@@ -192,7 +192,7 @@ const setNominal = (amount) => {
 
                     <input v-model="form.nomor_hp" type="text" placeholder="Nomor WhatsApp (Aktif)"
                         class="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500">
-                    <input v-model="form.email" type="email" placeholder="Email"
+                    <input v-model="form.email" type="email" placeholder="Email (Opsional)"
                         class="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500">
 
                     <textarea v-model="form.keterangan" placeholder="Tulis doa atau pesan khusus..."

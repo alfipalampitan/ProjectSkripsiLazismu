@@ -24,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'payment/callback', // Kecualikan rute ini
         ]);
 
+        $middleware->trustProxies(at: '*');
+
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {

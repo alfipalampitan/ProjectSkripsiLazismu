@@ -7,6 +7,7 @@ use App\Http\Controllers\DonasiTunaiController;
 use App\Http\Controllers\DonaturController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PenggunaController;
+use App\Http\Controllers\PilarFormController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\SettingController;
@@ -27,9 +28,7 @@ Route::get('/', function () {
 });
 
 Route::get('/pilih-program', [ProgramController::class, 'index'])->name('pilih.program');
-Route::get('/transparansi', function () {
-    return Inertia::render('Donasi/Transparansi');
-})->name('transparansi');
+Route::get('/transparansi', [DashboardController::class, 'transparansi'])->name('transparansi');
 
 Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
 
@@ -68,6 +67,15 @@ Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
 
     // Proses simpan
     Route::post('/pengaturan/update', [SettingController::class, 'update'])->name('settings.update');
+
+    Route::resource('pilar-form', PilarFormController::class)->names([
+        'index'   => 'pilar-form.index',
+        'create'  => 'pilar-form.create',
+        'store'   => 'pilar-form.store',
+        'edit'    => 'pilar-form.edit',
+        'update'  => 'pilar-form.update',
+        'destroy' => 'pilar-form.destroy',
+    ]);
 
 });
 

@@ -17,7 +17,7 @@ class DonasiTunaiController extends Controller
             'user_name' => 'required|string|max:255',
             'amount' => 'required|numeric|min:1000',
             'kategori' => 'required|string',
-            'nomor_hp' => 'nullable|string',
+            'nomor_hp' => 'required|numeric|digits_between:10,12',
             'email' => 'nullable|email',
             'keterangan' => 'nullable|string',
             'program_id' => 'nullable|exists:programs,id', // Jika ada relasi ke tabel program

@@ -23,4 +23,33 @@ class Program extends Model
         // Laravel akan mencari 'program_id' di tabel donations secara otomatis
         return $this->hasMany(Donation::class);
     }
+
+    public function program()
+    {
+        return $this->belongsTo(Program::class);
+    }
+
+    /**
+     * LOGIKA OTOMATIS: Berjalan di latar belakang setiap kali database donation berubah.
+     * Ini tidak akan mengganggu atau mengubah kode di PaymentController maupun ProgramController Anda.
+     */
+    protected static function booted()
+    {
+        // Setiap kali ada update status di tabel donations (misal dari pending jadi success di callback)
+        static::updated(function ($donation) {
+            // Pastikan donasi ini terikat dengan suatu program
+            if ($donation->program) {
+                // Hitung total donasi yang sukses khusus untuk program ini
+                $totalTerkumpul = static::where('program_id', $donation->program_id)
+                                        ->where('status', 'success')
+                                        ->sum('amount');
+
+                // Update kolom 'terkumpul' di database program secara fisik
+                // Ini otomatis bekerja baik untuk program pakai target maupun tanpa target dana
+                $donation->program()->update([
+                    'terkumpul' => (int) $totalTerkumpul
+                ]);
+            }
+        });
+    }
 }
