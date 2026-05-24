@@ -21,7 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->validateCsrfTokens(except: [
-            'payment/callback', // Kecualikan rute ini
+            'api/midtrans-callback', // Kecualikan rute ini
+
         ]);
 
         $middleware->trustProxies(at: '*');
