@@ -22,5 +22,13 @@ class UserSeeder extends Seeder
             'alamat'    => 'Jl. Sudirman No. 1, Jakarta',
             'role'      => 'admin',
         ]);
+        User::create([
+            'name'      => 'ngabMalik',
+            'email'     => 'malik12345@gmail.com',
+            'password'  => Hash::make('malik123'), // Selalu gunakan Hash untuk password
+            'jabatan'   => 'Staff Keuangan',
+            'alamat'    => 'Jl. Sudirman No. 7, Jakarta',
+            'role'      => 'staff',
+        ]);
     }
 }

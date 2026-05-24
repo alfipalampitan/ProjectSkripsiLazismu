@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
-import ModalDonasi from '@/Components/ModalDonasi.vue'; // Impor komponennya
+import { Link } from '@inertiajs/vue3'; // 👈 Impor Link dari Inertia untuk navigasi back
+import ModalDonasi from '@/Components/ModalDonasi.vue';
 
 const props = defineProps({
     program: Object,
@@ -8,19 +9,27 @@ const props = defineProps({
 });
 
 const isModalOpen = ref(false);
-
 </script>
 
 <template>
-    <div class="max-w-6xl mx-auto p-4 md:p-8 bg-gray-50 min-h-screen pb-24 md:pb-8">
+    <div class="max-w-6xl mx-auto p-4 md:p-8 bg-gray-50 min-h-screen pt-20 md:pt-8 pb-24 md:pb-8 relative">
         
+        <div class="fixed md:absolute top-4 left-4 z-50 md:z-10">
+            <Link :href="route('pilih.program')" 
+                class="flex items-center justify-center bg-white/90 backdrop-blur-md md:bg-white text-gray-700 hover:text-orange-500 w-11 h-11 rounded-xl shadow-md border border-gray-100 hover:border-orange-100 transition-all active:scale-95 group">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 transition-transform group-hover:-translate-x-0.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+            </Link>
+        </div>
+
         <div class="bg-white rounded-[2.5rem] p-4 md:p-6 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-6 md:gap-8 mb-8">
             
             <div class="w-full md:w-1/2 relative overflow-hidden rounded-2xl md:rounded-3xl shadow-inner bg-gray-100 flex items-center">
                 <img :src="`/storage/${program.gambar}`"
                     class="w-full h-56 sm:h-72 md:h-[350px] object-cover transition-transform duration-500 hover:scale-105">
                 <div class="absolute top-4 left-4">
-                    <span class="bg-orange-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-md">
+                    <span class="bg-orange-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-md ml-14 md:ml-0">
                         {{ program.kategori }}
                     </span>
                 </div>
@@ -138,7 +147,7 @@ const isModalOpen = ref(false);
 
                             <div class="text-right">
                                 <p class="text-gray-900 font-extrabold text-sm">
-                                    Rp{{ Number(d.jumlah || 0).toLocaleString('id-ID') }}
+                                    Rp{{ Number(d.amount || 0).toLocaleString('id-ID') }}
                                 </p>
                             </div>
                         </div>
@@ -153,7 +162,7 @@ const isModalOpen = ref(false);
 
                     <button v-if="donatur.length > 5"
                         class="w-full mt-4 pt-4 text-xs font-bold text-gray-400 hover:text-orange-500 transition-colors border-t border-gray-100">
-                        Lihat Semua Donatur
+                        Look Semua Donatur
                     </button>
                 </div>
             </div>

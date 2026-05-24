@@ -15,14 +15,11 @@ return new class extends Migration
             // Hubungkan ke master form pilar di atas
             $table->foreignId('pilar_form_id')->constrained('pilar_forms')->onDelete('cascade');
             
-            // Data dasar pemohon (pasti ada di semua pilar)
-            $table->string('nama_pemohon'); 
-            $table->string('nomor_hp');
-            $table->text('alamat');
+            // Status permohonan default (Pasti ada di semua pilar)
             $table->enum('status_permohonan', ['pending', 'disetujui', 'ditolak'])->default('pending');
             
             // Menyimpan value inputan teks & berkas file dinamis buatan admin
-            $table->json('biodata_dinamis')->nullable(); // Isi teks seperti Jurusan, NIK, dll
+            $table->json('biodata_dinamis')->nullable(); // Isi teks seperti Nama, NIK, NBM, Alamat, dll
             $table->json('berkas_dinamis')->nullable();  // Isi nama file upload-an dokumen
             
             $table->timestamps();

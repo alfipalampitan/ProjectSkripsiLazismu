@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DonasiTunaiController;
 use App\Http\Controllers\DonaturController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PengajuanMustahikController;
 use App\Http\Controllers\PenggunaController;
 use App\Http\Controllers\PilarFormController;
 use App\Http\Controllers\ProfileController;
@@ -28,11 +29,13 @@ Route::get('/', function () {
 });
 
 Route::get('/pilih-program', [ProgramController::class, 'index'])->name('pilih.program');
-Route::get('/transparansi', [DashboardController::class, 'transparansi'])->name('transparansi');
+Route::get('/transparansi-dana', [DashboardController::class, 'transparansi'])
+    ->name('donasi.transparansi');
 
 Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
 
-    Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('admin/dashboard', [DashboardController::class, 'adminIndex'])
+        ->name('admin.dashboard');
 
     // Ganti route lama Anda dengan ini
     Route::get('/transaksi', [TransaksiController::class, 'index'])->name('transaksi');
@@ -68,22 +71,16 @@ Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     // Proses simpan
     Route::post('/pengaturan/update', [SettingController::class, 'update'])->name('settings.update');
 
-    Route::resource('admin/pilar-form', PilarFormController::class)->names([
-        'index'   => 'pilar-form.index',
-        'create'  => 'pilar-form.create',
-        'store'   => 'pilar-form.store',
-        'edit'    => 'pilar-form.edit',
-        'update'  => 'pilar-form.update',
-        'destroy' => 'pilar-form.destroy',
-    ]);
-
 });
+
+// Jalur Pengajuan Mandiri Sisi Publik / Mustahik (Nama Baru)
+Route::get('/pengajuan', [PengajuanMustahikController::class, 'create'])->name('pengajuan-mustahik.create');
+Route::post('/pengajuan', [PengajuanMustahikController::class, 'store'])->name('pengajuan-mustahik.store');
 
 Route::middleware(['auth', 'verified', 'role:staff'])->group(function () {
 
-    Route::get('/staff/dashboard', function () {
-        return Inertia::render('Staff/Dashboard');
-    })->name('staff.dashboard');
+    Route::get('/staff/dashboard', [DashboardController::class, 'staffIndex'])
+        ->name('staff.dashboard');
 
     Route::get('/staff/donasi-tunai', function () {
         return Inertia::render('Staff/InputDonasiTunai', [
@@ -94,6 +91,21 @@ Route::middleware(['auth', 'verified', 'role:staff'])->group(function () {
     // 3. Proses Simpan Donasi Tunai (POST)
     Route::post('/staff/donasi-tunai', [DonasiTunaiController::class, 'store'])
         ->name('donasi-tunai.store');
+
+        Route::resource('staff/pilar-form', PilarFormController::class)->names([
+        'index'   => 'pilar-form.index',
+        'create'  => 'pilar-form.create',
+        'store'   => 'pilar-form.store',
+        'edit'    => 'pilar-form.edit',
+        'update'  => 'pilar-form.update',
+        'destroy' => 'pilar-form.destroy',
+    ]);
+
+    Route::get('/staff/permohonan', [PilarFormController::class, 'listApplicants'])->name('staff.applicants.index');
+    // Route untuk melihat detail biodata & berkas permohonan tertentu
+    Route::get('/staff/permohonan/{id}', [PilarFormController::class, 'showApplicant'])->name('staff.applicants.show');
+    // Route untuk memproses persetujuan sekaligus memotong saldo donasi (Pencairan)
+    Route::post('/staff/permohonan/{id}/disburse', [PilarFormController::class, 'disburseApplicant'])->name('staff.applicants.disburse');
 
 });
 

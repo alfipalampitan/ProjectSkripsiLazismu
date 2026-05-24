@@ -9,10 +9,13 @@ class Applicant extends Model
 {
     use HasFactory;
 
+    // Kolom lama yang sudah dihapus dari database wajib dibuang dari $fillable
     protected $fillable = [
-        'nomor_permohonan', 'pilar_form_id', 'nama_pemohon', 
-        'nomor_hp', 'alamat', 'status_permohonan', 
-        'biodata_dinamis', 'berkas_dinamis'
+        'nomor_permohonan', 
+        'pilar_form_id', 
+        'status_permohonan', 
+        'biodata_dinamis', 
+        'berkas_dinamis'
     ];
 
     protected $casts = [
@@ -28,5 +31,11 @@ class Applicant extends Model
     public function disbursements()
     {
         return $this->hasMany(Disbursement::class);
+    }
+
+    public function getNamaPemohonAttribute()
+    {
+        // Mencari key dengan nama 'Nama' atau 'Nama Pemohon' di dalam JSON
+        return $this->biodata_dinamis['Nama'] ?? $this->biodata_dinamis['Nama Pemohon'] ?? 'Tanpa Nama';
     }
 }
