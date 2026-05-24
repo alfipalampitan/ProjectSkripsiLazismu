@@ -13,17 +13,25 @@ class Disbursement extends Model
         'order_id_pengeluaran',
         'judul_pengeluaran',
         'amount',
-        'jenis_pengeluaran',
         'program_id',
-        'pilar',
+        'applicant_id',
+        'pilar_terkait',
         'keterangan',
     ];
 
     /**
-     * Relasi ke model Program (Mengambil data program jika pengeluaran berdasarkan program)
+     * Relasi ke model Program
      */
     public function program()
     {
         return $this->belongsTo(Program::class, 'program_id');
+    }
+
+    /**
+     * Relasi ke model Applicant (Mustahik)
+     */
+    public function applicant()
+    {
+        return $this->belongsTo(Applicant::class, 'applicant_id');
     }
 }

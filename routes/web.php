@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\LaporanController;
 use App\Http\Controllers\Admin\ProgramManagerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DisbursementController;
 use App\Http\Controllers\DonasiTunaiController;
 use App\Http\Controllers\DonaturController;
 use App\Http\Controllers\PaymentController;
@@ -92,14 +93,17 @@ Route::middleware(['auth', 'verified', 'role:staff'])->group(function () {
     Route::post('/staff/donasi-tunai', [DonasiTunaiController::class, 'store'])
         ->name('donasi-tunai.store');
 
-        Route::resource('staff/pilar-form', PilarFormController::class)->names([
-        'index'   => 'pilar-form.index',
-        'create'  => 'pilar-form.create',
-        'store'   => 'pilar-form.store',
-        'edit'    => 'pilar-form.edit',
-        'update'  => 'pilar-form.update',
+    Route::resource('staff/pilar-form', PilarFormController::class)->names([
+        'index' => 'pilar-form.index',
+        'create' => 'pilar-form.create',
+        'store' => 'pilar-form.store',
+        'edit' => 'pilar-form.edit',
+        'update' => 'pilar-form.update',
         'destroy' => 'pilar-form.destroy',
     ]);
+
+    Route::get('staff/pengeluaran/create', [DisbursementController::class, 'create'])->name('pengeluaran.create');
+    Route::post('staff/pengeluaran/store', [DisbursementController::class, 'store'])->name('pengeluaran.store');
 
     Route::get('/staff/permohonan', [PilarFormController::class, 'listApplicants'])->name('staff.applicants.index');
     // Route untuk melihat detail biodata & berkas permohonan tertentu
