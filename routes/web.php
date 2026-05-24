@@ -97,7 +97,7 @@ Route::middleware(['auth', 'verified', 'role:staff'])->group(function () {
 
 });
 
-Route::post('/payment/callback', [PaymentController::class, 'callback']);
+Route::post('/api/midtrans-callback', [PaymentController::class, 'callback']);
 Route::get('/daftar-donatur', [DonaturController::class, 'index'])->name('donatur.index');
 
 // Letakkan ini di web.php
