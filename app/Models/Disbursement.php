@@ -13,6 +13,8 @@ class Disbursement extends Model
         'order_id_pengeluaran',
         'judul_pengeluaran',
         'amount',
+        'sifat_pengeluaran',     // <--- WAJIB ADA
+        'kategori_dana_umum',    // <--- WAJIB ADA
         'program_id',
         'applicant_id',
         'pilar_terkait',

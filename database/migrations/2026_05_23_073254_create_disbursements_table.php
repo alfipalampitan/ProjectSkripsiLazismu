@@ -13,20 +13,30 @@ return new class extends Migration
     {
         Schema::create('disbursements', function (Blueprint $table) {
             $table->id();
-            $table->string('order_id_pengeluaran')->unique(); // OUT-LAZISMU-1779517833
-            $table->string('judul_pengeluaran'); // Contoh: "Penyaluran Sembako Korban Banjir" atau "Bantuan Beasiswa an. Ahmad"
-            $table->unsignedBigInteger('amount'); // Nominal uang keluar
+            $table->string('order_id_pengeluaran')->unique(); 
+            $table->string('judul_pengeluaran'); 
+            $table->unsignedBigInteger('amount'); 
             
-            // JALUR 1: Mengurangi kas Program Donasi (INI WAJIB, karena semua uang keluar harus jelas dari dompet mana)
-            $table->foreignId('program_id')->constrained('programs')->onDelete('cascade');
+            // 🌟 PERUBAHAN 1: Sifat Pengeluaran (Terikat atau Tidak Terikat)
+            // Ini yang menjadi kompas utama sistem untuk membagi card laporan donatur
+            $table->enum('sifat_pengeluaran', ['terikat', 'tidak_terikat'])->default('terikat');
+
+            // 🌟 PERUBAHAN 2: Kategori Dana Tidak Terikat (Nullable)
+            // Diisi jika sifat_pengeluaran = 'tidak_terikat' (Contoh: zakat_maal, infaq, amil)
+            $table->string('kategori_dana_umum')->nullable();
+
+            // 🌟 PERUBAHAN 3: Dibuat nullable()
+            // - Jika Terikat: Wajib diisi ID program untuk kalkulasi saldo khusus (internal)
+            // - Jika Tidak Terikat: Diisi NULL karena mengambil dari dana umum/zakat
+            $table->foreignId('program_id')->nullable()->constrained('programs')->onDelete('cascade');
             
-            // JALUR 2: Relasi ke Mustahik (KUNCI JAWABANNYA: Dibuat nullable)
-            // - Jika diisi ID: Berarti pengeluaran via Jalur Permohonan Mustahik (Pilar)
-            // - Jika NULL: Berarti pengeluaran langsung dari Program Internal Lazismu (Tanpa Permohonan)
+            // JALUR 2: Relasi ke Mustahik (Tetap nullable sesuai konsepmu)
+            // - Jika ada ID: Lewat permohonan pilar
+            // - Jika NULL: Pengeluaran internal langsung
             $table->foreignId('applicant_id')->nullable()->constrained('applicants')->onDelete('cascade');
             
-            // Untuk kebutuhan pengelompokan laporan bulanan
-            $table->string('pilar_terkait')->nullable(); // 'pendidikan', 'ekonomi', 'kemanusiaan', dll
+            // Kebutuhan pengelompokan laporan bulanan / pilar
+            $table->string('pilar_terkait')->nullable(); 
             
             $table->text('keterangan')->nullable();
             $table->timestamps();

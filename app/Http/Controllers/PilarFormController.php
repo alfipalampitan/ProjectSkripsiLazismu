@@ -115,65 +115,104 @@ class PilarFormController extends Controller
             'programs'  => $programs
         ]);
     }
-
     /**
      * Proses Persetujuan (ACC) Keuangan + Pencairan Dana (Disbursement Dinamis)
-     * Mengikuti konsep Dana Terikat & Tidak Terikat tanpa merubah struktur asli controller
+     * Sinkron dengan tabel baru: kas_umum (Validasi Saldo & Potong Kas Otomatis)
      */
     public function disburseApplicant(Request $request, $id)
     {
-        $applicant = Applicant::findOrFail($id);
+        $applicant = Applicant::with('pilarForm')->findOrFail($id);
 
-        // 1. Validasi inputan dengan tambahan aturan bersyarat (required_if) untuk sifat dana
+        // 1. Ambil nilai sifat pengeluaran dari form Vue (default: terikat)
+        $sifatPengeluaran = $request->input('sifat_pengeluaran', 'terikat');
+
+        // 2. Validasi inputan diperketat secara dinamis sesuai sifat_pengeluaran
         $request->validate([
-            'sifat_pengeluaran' => 'required|in:terikat,tidak_terikat',
-            'program_id'        => 'required_if:sifat_pengeluaran,terikat|nullable|exists:programs,id', 
-            'amount'            => 'required|numeric|min:1',     
-            'judul_pengeluaran' => 'required|string|max:255',
-            'keterangan'        => 'nullable|string',
+            'sifat_pengeluaran'   => 'required|in:terikat,tidak_terikat',
+            'program_id'          => $sifatPengeluaran === 'terikat' ? 'required|exists:programs,id' : 'nullable', 
+            'kategori_dana_umum'  => $sifatPengeluaran === 'tidak_terikat' ? 'required|string' : 'nullable',
+            'amount'              => 'required|numeric|min:1',     
+            'judul_pengeluaran'   => 'required|string|max:255',
+            'keterangan'          => 'nullable|string',
         ]);
 
-        // 2. LOGIKA CEK SALDO KAS KAS PROGRAM (HANYA BERLAKU JIKA DANA TERIKAT)
         $programIdValue = null;
-        if ($request->sifat_pengeluaran === 'terikat') {
-            $program = Program::findOrFail($request->program_id);
+        $kasUmumModel = null; // Penampung model kas umum jika tidak terikat
+
+        // 3. LOGIKA HITUNG & HADANG SALDO KHUSUS INTERNAL
+        if ($sifatPengeluaran === 'terikat') {
+            // --- VALIDASI SALDO DANA TERIKAT PROGRAM ---
+            $program = Program::findOrFail($request->input('program_id'));
             $programIdValue = $program->id;
             
+            // Hitung total pengeluaran program sebelumnya
             $totalDikeluarkan = Disbursement::where('program_id', $program->id)->sum('amount');
-            $sisaSaldoKas = $program->terkumpul - $totalDikeluarkan;
+            
+            // Rumus Saldo Riil / Efektif Internal
+            $sisaSaldoKasEfektif = $program->terkumpul - $totalDikeluarkan;
 
-            if ($request->amount > $sisaSaldoKas) {
+            if ($request->input('amount') > $sisaSaldoKasEfektif) {
                 return redirect()->back()->withErrors([
-                    'amount' => 'Saldo tidak mencukupi! Sisa dana kas untuk program "' . $program->judul . '" hanya Rp ' . number_format($sisaSaldoKas, 0, ',', '.')
+                    'amount' => 'Saldo kas tidak mencukupi! Sisa dana riil untuk program "' . $program->judul . '" adalah Rp ' . number_format($sisaSaldoKasEfektif, 0, ',', '.')
+                ]);
+            }
+
+        } else if ($sifatPengeluaran === 'tidak_terikat') {
+            // --- VALIDASI SALDO DANA TIDAK TERIKAT VIA TABEL KAS_UMUM ---
+            $kategori = $request->input('kategori_dana_umum'); // e.g., 'zakat_maal', 'infaq_umum'
+
+            // Ambil data saldo live dari tabel kas_umum
+            $kasUmumModel = \App\Models\KasUmum::where('kategori', $kategori)->first();
+
+            // Jika kategori belum di-input di database oleh admin
+            if (!$kasUmumModel) {
+                return redirect()->back()->withErrors([
+                    'kategori_dana_umum' => 'Kategori kas ' . strtoupper(str_replace('_', ' ', $kategori)) . ' belum diinisialisasi di database!'
+                ]);
+            }
+
+            // Validasi: Hadang jika saldo live di tabel kas_umum kurang dari nominal pencairan
+            if ($request->input('amount') > $kasUmumModel->saldo) {
+                $namaKategoriTeks = strtoupper(str_replace('_', ' ', $kategori));
+                return redirect()->back()->withErrors([
+                    'amount' => 'Gagal Otorisasi! Saldo untuk ' . $namaKategoriTeks . ' tidak mencukupi. Saldo live saat ini: Rp ' . number_format($kasUmumModel->saldo, 0, ',', '.')
                 ]);
             }
         }
 
-        // 3. Gunakan DB Transaction bawaan controller asli kamu (Aman, DB support facades sudah di-import di atas)
-        DB::transaction(function () use ($request, $applicant, $programIdValue) {
+        // 4. Jalankan DB Transaction untuk mengunci akurasi data keuangan (ACID)
+        DB::transaction(function () use ($request, $applicant, $programIdValue, $sifatPengeluaran, $kasUmumModel) {
             
-            // Update status permohonan menjadi disetujui sesuai baris kode aslimu
+            // Ubah status permohonan mustahik menjadi disetujui
             $applicant->update([
                 'status_permohonan' => 'disetujui'
             ]);
 
-            // Generate Order ID Pengeluaran unik bawaan aslimu
-            $orderIdOut = 'OUT-LAZISMU-' . date('Ymd') . '-' . strtoupper(Str::random(4));
+            // Pembuatan kode unik pengeluaran otomatis
+            $orderIdOut = 'OUT-LAZISMU-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(4));
 
-            // Prefix penanda pencatatan nirlaba untuk memo keterangan
-            $prefixMemo = $request->sifat_pengeluaran === 'tidak_terikat' 
-                ? "[UNRESTRICTED - KAS UMUM] " 
+            // Set prefix memo teks untuk memperjelas audit internal
+            $kategoriDanaUmum = $request->input('kategori_dana_umum');
+            $prefixMemo = $sifatPengeluaran === 'tidak_terikat' 
+                ? "[UNRESTRICTED - KAS " . strtoupper(str_replace('_', ' ', $kategoriDanaUmum)) . "] " 
                 : "[RESTRICTED - DANA PROGRAM] ";
 
-            // Simpan ke tabel disbursements menggunakan struktur parameter aslimu
+            // POTONG SALDO OTOMATIS: Jika dana tidak terikat, potong saldo live di tabel kas_umum
+            if ($sifatPengeluaran === 'tidak_terikat' && $kasUmumModel) {
+                $kasUmumModel->decrement('saldo', $request->input('amount'));
+            }
+
+            // Insert data ke tabel disbursements
             Disbursement::create([
                 'order_id_pengeluaran' => $orderIdOut,
-                'judul_pengeluaran'    => $request->judul_pengeluaran,
-                'amount'               => $request->amount,
-                'jenis_pengeluaran'    => 'pilar', 
-                'program_id'           => $programIdValue, // Bernilai ID program jika terikat, bernilai NULL jika tidak terikat
-                'pilar'                => $applicant->pilarForm->pilar, 
-                'keterangan'           => $prefixMemo . $request->keterangan,
+                'judul_pengeluaran'    => $request->input('judul_pengeluaran'),
+                'amount'               => $request->input('amount'),
+                'sifat_pengeluaran'    => $sifatPengeluaran,
+                'kategori_dana_umum'   => $sifatPengeluaran === 'tidak_terikat' ? $kategoriDanaUmum : null,
+                'program_id'           => $programIdValue, 
+                'applicant_id'         => $applicant->id,  
+                'pilar_terkait'        => $applicant->pilarForm->pilar ?? 'Umum', 
+                'keterangan'           => $prefixMemo . $request->input('keterangan'),
             ]);
         });
 
