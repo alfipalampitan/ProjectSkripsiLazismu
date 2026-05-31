@@ -1,24 +1,34 @@
-public function run(): void
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\KasUmum;
+
+class KategoriDanaSeeder extends Seeder
+{
+    public function run(): void
     {
         $categories = [
             [
-                'kategori' => 'zakat_maal', // 👈 Ubah jadi huruf kecil & pakai underscore
+                'kategori' => 'zakat_maal',
                 'saldo' => 5000000,
             ],
             [
-                'kategori' => 'infaq',      // 👈 Samakan formatnya
+                'kategori' => 'infaq',
                 'saldo' => 2500000,
             ],
             [
-                'kategori' => 'sedekah',    // 👈 Samakan formatnya
+                'kategori' => 'sedekah',
                 'saldo' => 1000000,
             ],
         ];
 
         foreach ($categories as $category) {
-            \App\Models\KasUmum::updateOrCreate(
+            KasUmum::updateOrCreate(
                 ['kategori' => $category['kategori']],
                 ['saldo' => $category['saldo']]
             );
         }
     }
+}

@@ -30,7 +30,7 @@ Route::get('/', function () {
 });
 
 Route::get('/pilih-program', [ProgramController::class, 'index'])->name('pilih.program');
-Route::get('/transparansi-dana', [DashboardController::class, 'transparansi'])
+Route::get('/transparansi', [DashboardController::class, 'transparansi'])
     ->name('donasi.transparansi');
 
 Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
