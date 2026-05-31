@@ -19,7 +19,7 @@ watch(isMobileMenuOpen, (newValue) => {
 const navLinks = [
     { name: 'Donasi Sekarang', icon: 'fa-hand-holding-heart', url: '/pilih-program', component: 'Donasi/PilihProgram' },
     { name: 'Transparansi Dana', icon: 'fa-chart-pie', url: '/transparansi', component: 'Donasi/Transparansi' },
-    { name: 'Kalkulator Zakat', icon: 'fa-calculator', url: '/zakat', component: 'Donasi/Kalkulator' },
+    { name: 'Kalkulator Zakat', icon: 'fa-calculator', url: '/zakat', component: 'KalkulatorZakat' }
 ];
 
 const isActive = (link) => {

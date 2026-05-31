@@ -14,6 +14,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\TransaksiController;
+use App\Http\Controllers\ZakatController;
 use App\Models\Program;
 use App\Models\User;
 use Illuminate\Foundation\Application;
@@ -32,6 +33,9 @@ Route::get('/', function () {
 Route::get('/pilih-program', [ProgramController::class, 'index'])->name('pilih.program');
 Route::get('/transparansi', [DashboardController::class, 'transparansi'])
     ->name('donasi.transparansi');
+
+Route::get('/zakat', [ZakatController::class, 'index']);
+Route::post('/zakat/checkout', [ZakatController::class, 'checkout']);
 
 Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
 
