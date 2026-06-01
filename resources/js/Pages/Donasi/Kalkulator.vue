@@ -40,11 +40,6 @@ const formatRupiah = (value) => {
     if (!value) return '0';
     return new Intl.NumberFormat('id-ID').format(value);
 };
-
-// ==========================================
-// LOGIKA PERHITUNGAN REAKTIF (COMPUTED)
-// ==========================================
-
 // 1. Hitung Total Harta / Pendapatan Bersih
 const totalHarta = computed(() => {
     if (currentTab.value === 'penghasilan') {

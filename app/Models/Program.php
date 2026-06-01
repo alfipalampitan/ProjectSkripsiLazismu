@@ -23,16 +23,6 @@ class Program extends Model
         // Laravel akan mencari 'program_id' di tabel donations secara otomatis
         return $this->hasMany(Donation::class);
     }
-
-    public function program()
-    {
-        return $this->belongsTo(Program::class);
-    }
-
-    /**
-     * LOGIKA OTOMATIS: Berjalan di latar belakang setiap kali database donation berubah.
-     * Ini tidak akan mengganggu atau mengubah kode di PaymentController maupun ProgramController Anda.
-     */
     protected static function booted()
     {
         // Setiap kali ada update status di tabel donations (misal dari pending jadi success di callback)
