@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Donation;
 use App\Models\Program;
+use App\Models\KasUmum; // Pastikan Model KasUmum di-import ke sini
 use Illuminate\Http\Request;
 use Midtrans\Config;
 use Midtrans\Snap;
+use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
@@ -14,8 +16,8 @@ class PaymentController extends Controller
     {
         // 1. VALIDASI DATA INPUT DARI VUE
         $request->validate([
-            'program_id' => 'required|exists:programs,id', // Wajib ada di tabel programs
-            'total' => 'required|numeric|min:10000',   // Minimal donasi Rp 10.000 (sesuai standar gateway)
+            'program_id' => 'required|exists:programs,id', 
+            'total' => 'required|numeric|min:10000',   
             'nama' => 'nullable|regex:/^[a-zA-Z\s]+$/|max:255',
             'email' => 'nullable|email|max:255',
             'nomor_hp' => 'nullable|regex:/^[0-9]+$/|min:10|max:15',
@@ -28,14 +30,11 @@ class PaymentController extends Controller
             Config::$isSanitized = true;
             Config::$is3ds = true;
 
-            // Aman digunakan karena sudah divalidasi pasti ada di database
             $program = Program::find($request->program_id);
-
             $orderId = 'LAZISMU-'.time();
 
-            // Berikan nilai default jika user memilih anonim (Hamba Allah)
             $namaDonatur = $request->nama ?: 'Hamba Allah';
-            $emailDonatur = $request->email ?: 'donatur@lazismu.org'; // Midtrans butuh format email valid
+            $emailDonatur = $request->email ?: 'donatur@lazismu.org'; 
             $nomorHp = $request->nomor_hp ?: '081111111111';
 
             $params = [
@@ -48,19 +47,15 @@ class PaymentController extends Controller
                     'email' => $emailDonatur,
                     'phone' => $nomorHp,
                 ],
-
-                // TAMBAHKAN BLOK EXPIRY INI AGAR MIDTRANS IKUT KADALUARSA DALAM 3 MENIT
                 'expiry' => [
-                    'start_time' => date('Y-m-d H:i:s O'), // waktu sekarang
+                    'start_time' => date('Y-m-d H:i:s O'), 
                     'unit' => 'minute',
-                    'duration' => 3, // 3 menit
+                    'duration' => 3, 
                 ],
             ];
 
-            // Request Token ke Midtrans
             $snapToken = Snap::getSnapToken($params);
 
-            // SIMPAN DATA KE DATABASE
             Donation::create([
                 'order_id' => $orderId,
                 'user_name' => $namaDonatur,
@@ -69,7 +64,7 @@ class PaymentController extends Controller
                 'snap_token' => $snapToken,
                 'kategori' => $program->kategori,
                 'keterangan' => $request->keterangan,
-                'email' => $request->email, // Tetap simpan null di DB jika aslinya kosong
+                'email' => $request->email, 
                 'nomor_hp' => $request->nomor_hp,
                 'program_id' => $request->program_id,
             ]);
@@ -87,28 +82,61 @@ class PaymentController extends Controller
         $hashed = hash('sha512', $request->order_id.$request->status_code.$request->gross_amount.$serverKey);
 
         if ($hashed == $request->signature_key) {
-            $donation = Donation::where('order_id', $request->order_id)->first();
+            
+            // Menggunakan Database Transaction agar aman dan tidak terjadi partial-update jika crash
+            DB::transaction(function () use ($request) {
+                
+                $donation = Donation::where('order_id', $request->order_id)->first();
 
-            if ($donation) {
-                // 1. Update status donasi berdasarkan response Midtrans
-                if ($request->transaction_status == 'settlement' || $request->transaction_status == 'capture') {
-                    $donation->update(['status' => 'success']);
-                } elseif ($request->transaction_status == 'pending') {
-                    $donation->update(['status' => 'pending']);
-                } elseif ($request->transaction_status == 'deny' || $request->transaction_status == 'expire' || $request->transaction_status == 'cancel') {
-                    $donation->update(['status' => 'failed']);
+                if ($donation) {
+                    $oldStatus = $donation->status; // Simpan status lama untuk validasi pencegahan double-increment
+                    $currentStatus = $request->transaction_status;
+
+                    // 1. Update status transaksi utama
+                    if ($currentStatus == 'settlement' || $currentStatus == 'capture') {
+                        $donation->update(['status' => 'success']);
+                    } elseif ($currentStatus == 'pending') {
+                        $donation->update(['status' => 'pending']);
+                    } elseif (in_array($currentStatus, ['deny', 'expire', 'cancel'])) {
+                        $donation->update(['status' => 'failed']);
+                    }
+
+                    // 2. Jika status berubah dari 'pending' menjadi 'success' (mencegah double-count akibat hit berulang dari midtrans)
+                    if (($currentStatus == 'settlement' || $currentStatus == 'capture') && $oldStatus !== 'success') {
+                        
+                        // Ambil relasi program terkait
+                        $program = Program::find($donation->program_id);
+
+                        if ($program) {
+                            $nominalDonasi = $donation->amount;
+
+                            // KONDISI A: JIKA PROGRAM TANPA TARGET DANA (Saldonya dibelokkan ke Kas Umum)
+                            if ($program->target_dana <= 0) {
+                                
+                                // Ambil string kategori dari program (nilainya wajib disamakan: 'zakat' atau 'infaq_sedekah')
+                                $kategoriSistem = strtolower($program->kategori);
+
+                                // Cari kantong besarnya di tabel kas_umum
+                                $kasUmum = KasUmum::where('kategori', $kategoriSistem)->first();
+
+                                if ($kasUmum) {
+                                    // Masukkan dan akumulasikan ke saldo kas_umum yang sesuai
+                                    $kasUmum->increment('saldo', $nominalDonasi);
+                                }
+                            }
+
+                            // KONDISI B: JIKA PROGRAM PUNYA TARGET DANA (> 0)
+                            // (Uang masuk ke saldo program itu sendiri, tapi program tanpa target tetap dinaikkan 
+                            //  kolom 'terkumpul'-nya hanya sebagai rekapan display dashboard/landing page)
+                            $totalDonasiMasuk = Donation::where('program_id', $donation->program_id)
+                                ->where('status', 'success')
+                                ->sum('amount');
+
+                            $program->update(['terkumpul' => (int) $totalDonasiMasuk]);
+                        }
+                    }
                 }
-
-                // 2. Hitung ulang total donasi sukses untuk program ini
-                $totalDonasiMasuk = Donation::where('program_id', $donation->program_id)
-                    ->where('status', 'success')
-                    ->sum('amount');
-
-                // 3. Update nominal fisik ke kolom terkumpul di tabel programs
-                \DB::table('programs')
-                    ->where('id', $donation->program_id)
-                    ->update(['terkumpul' => (int) $totalDonasiMasuk]);
-            }
+            });
         }
 
         return response()->json(['message' => 'Callback success']);

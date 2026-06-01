@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Applicant;
 use App\Models\Disbursement;
 use App\Models\KasUmum;
-use App\Models\Program; // Pastikan model KasUmum di-import
+use App\Models\Program; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -21,7 +21,15 @@ class DisbursementController extends Controller
             ->latest()
             ->get();
 
-        // 2. Hitung statistik makro finansial atas berdasarkan data riil
+        // 2. KOREKSI DATA PROGRAM (HANYA YANG TERIKAT / MEMILIKI TARGET DANA)
+        // Menampilkan program kerja/campaign aktif yang mengumpulkan target dana tertentu (> 0)
+        $programsTerikat = Program::select('id', 'judul', 'terkumpul')
+            ->where('target_dana', '>', 0)
+            ->latest()
+            ->get();
+
+        // 3. Hitung statistik makro finansial atas berdasarkan data riil
+        // Total Saldo Live = Total saldo terikat di program + Total saldo bebas di seluruh kategori kas umum
         $totalSaldoGlobal = Program::sum('terkumpul') + KasUmum::sum('saldo');
         $totalTerikat = Disbursement::where('sifat_pengeluaran', 'terikat')->sum('amount');
         $totalBebas = Disbursement::where('sifat_pengeluaran', 'tidak_terikat')->sum('amount');
@@ -32,7 +40,7 @@ class DisbursementController extends Controller
             'total_bebas' => $totalBebas,
         ];
 
-        // 3. Hitung akumulasi pengeluaran per pilar
+        // 4. Hitung akumulasi pengeluaran per pilar
         $pilarStatsRaw = Disbursement::select('pilar_terkait', DB::raw('SUM(amount) as total'))
             ->groupBy('pilar_terkait')
             ->pluck('total', 'pilar_terkait')
@@ -47,29 +55,26 @@ class DisbursementController extends Controller
             'Lingkungan' => $pilarStatsRaw['Lingkungan'] ?? 0,
         ];
 
-        // 4. Kirim data ke Inertia
+        // 5. Kirim data ke Inertia dengan pemisahan yang bersih
         return Inertia::render('Staff/InputPengeluaran', [
             'applicants' => $applicants,
-            'programs' => Program::select('id', 'judul', 'terkumpul')->get(),
+            'programs' => $programsTerikat, // SEKARANG SUDAH BERSIH (Hanya yang punya target dana)
             'stats' => $stats,
             'pilarStats' => $pilarStats,
-            'kasUmumList' => KasUmum::select('kategori', 'saldo')->get(), // Opsi tambahan untuk select option di Vue
+            'kasUmumList' => KasUmum::select('kategori', 'saldo')->get(), // Digunakan untuk isi dropdown kanan saat mode "Tidak Terikat"
         ]);
     }
 
+    // Method store tetap aman digunakan tanpa perubahan karena logika if-else 
+    // antara 'terikat' (ke tabel Program) dan 'tidak_terikat' (ke tabel KasUmum) sudah benar.
     public function store(Request $request)
     {
-        // 1. HAPUS ATAU KOMENTARI LINE DD SEBELUMNYA
-        // dd($request->all());
-
         $sifatPengeluaran = $request->input('sifat_pengeluaran', 'tidak_terikat');
 
-        // Pengaman ekstra: jika program_id datang dalam bentuk string kosong, paksa jadi null
         if ($request->input('program_id') === '') {
             $request->merge(['program_id' => null]);
         }
 
-        // 2. VALIDASI DIKONDISIKAN SECARA DINAMIS
         $request->validate([
             'sifat_pengeluaran' => 'required|in:terikat,tidak_terikat',
             'judul_pengeluaran' => 'required|string|max:255',
@@ -84,7 +89,6 @@ class DisbursementController extends Controller
         $programIdValue = null;
         $kasUmumModel = null;
 
-        // 3. CEK HADANG SALDO SEBELUM SAVE
         if ($sifatPengeluaran === 'terikat') {
             $program = Program::findOrFail($request->input('program_id'));
             $programIdValue = $program->id;
@@ -117,23 +121,18 @@ class DisbursementController extends Controller
             }
         }
 
-        // 4. DATABASE TRANSACTION & AUTO DECREMENT
         DB::transaction(function () use ($request, $sifatPengeluaran, $programIdValue, $kasUmumModel) {
 
-            // Generate Order ID Unik untuk Pengeluaran
             $orderIdOut = 'OUT-LAZISMU-'.date('Ymd').'-'.strtoupper(Str::random(4));
-
             $kategoriDanaUmum = $request->input('kategori_dana_umum');
             $prefixMemo = $sifatPengeluaran === 'tidak_terikat'
                 ? '[UNRESTRICTED - KAS '.strtoupper(str_replace('_', ' ', $kategoriDanaUmum)).'] '
                 : '[RESTRICTED - DANA PROGRAM] ';
 
-            // KAS UMUM OTOMATIS POTONG
             if ($sifatPengeluaran === 'tidak_terikat' && $kasUmumModel) {
                 $kasUmumModel->decrement('saldo', $request->input('amount'));
             }
 
-            // Simpan ke database disbursement
             Disbursement::create([
                 'order_id_pengeluaran' => $orderIdOut,
                 'judul_pengeluaran' => $request->input('judul_pengeluaran'),
@@ -146,7 +145,6 @@ class DisbursementController extends Controller
                 'keterangan' => $prefixMemo.$request->input('keterangan'),
             ]);
 
-            // Jika pengeluaran ini sekaligus mengubah status pemohon (mustahik)
             if ($request->input('applicant_id')) {
                 Applicant::where('id', $request->input('applicant_id'))->update([
                     'status_permohonan' => 'disetujui',

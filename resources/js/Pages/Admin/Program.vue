@@ -17,7 +17,7 @@ const tipeTarget = ref('pakai_target');
 
 const form = useForm({
     judul: '',
-    kategori: 'Zakat',
+    kategori: 'zakat',
     target_dana: '',
     deskripsi: '',
     gambar: null,
@@ -260,8 +260,8 @@ const formatInputUang = (event) => {
                                     <label class="block text-sm font-bold text-gray-700 mb-1">Kategori</label>
                                     <select v-model="form.kategori"
                                         class="w-full border-gray-200 rounded-xl focus:ring-orange-500">
-                                        <option value="Zakat">Zakat</option>
-                                        <option value="Infaq">Infaq</option>
+                                        <option value="zakat">Zakat</option>
+                                        <option value="infaq_sodaqoh">Infaq/Sodaqoh</option>
                                         <option value="Qurban">Qurban</option>
                                         <option value="Wakaf">Wakaf</option>
                                         <option value="Pilar">Pilar</option>

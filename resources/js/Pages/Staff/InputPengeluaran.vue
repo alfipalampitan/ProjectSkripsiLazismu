@@ -8,7 +8,7 @@ import Swal from 'sweetalert2';
 const props = defineProps({
     applicants: Array,       // Seluruh list permohonan dana masuk dari database
     programs: Array,         // List dompet program terikat (untuk form dan tabel dinamis)
-    kasUmum: Array,          // List saldo kas umum live
+    kasUmumList: Array,          // List saldo kas umum live
     stats: Object,           // Angka rekap atas: total_saldo, total_terikat, total_bebas
     pilarStats: Object,      // Total nominal pengeluaran bulanan per pilar lazismu
 });
@@ -199,7 +199,7 @@ const submit = () => {
                         class="p-3 rounded-xl border border-slate-100 bg-slate-50/70 flex flex-col justify-between shadow-sm">
                         <span
                             class="px-2 py-0.5 bg-slate-200 text-slate-800 font-extrabold text-[9px] rounded uppercase self-start">{{
-                            pilarLabel }}</span>
+                                pilarLabel }}</span>
                         <p class="text-xs font-black text-slate-800 mt-2">Rp{{
                             pilarStats?.[key]?.toLocaleString('id-ID') ?? '0' }}</p>
                     </div>
@@ -426,16 +426,18 @@ const submit = () => {
                             </div>
 
                             <div v-if="form.sifat_pengeluaran === 'tidak_terikat'">
-                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Kategori Dana
-                                    Tidak Terikat</label>
+                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                    Kategori Dana Tidak Terikat
+                                </label>
                                 <select v-model="form.kategori_dana_umum"
                                     class="w-full border-slate-200 rounded p-2.5 bg-white font-bold text-slate-800 text-xs"
                                     :required="form.sifat_pengeluaran === 'tidak_terikat'">
                                     <option value="" disabled>-- Pilih Jenis Alokasi Dana --</option>
-                                    <option value="zakat_maal">Zakat Maal (Unrestricted)</option>
-                                    <option value="infaq_umum">Infaq Umum / Shadaqah</option>
-                                    <option value="fidyah">Dana Fidyah & Kaffarah</option>
-                                    <option value="operasional_amil">Kas Operasional Internal Amil</option>
+
+                                    <option v-for="kas in kasUmumList" :key="kas.kategori" :value="kas.kategori">
+                                        {{ kas.kategori.replace('_', ' ').toUpperCase() }} (Saldo: Rp{{
+                                        kas.saldo?.toLocaleString('id-ID') }})
+                                    </option>
                                 </select>
                             </div>
 
