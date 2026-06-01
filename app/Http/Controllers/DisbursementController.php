@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Applicant;
 use App\Models\Disbursement;
 use App\Models\KasUmum;
-use App\Models\Program; 
+use App\Models\Program;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -65,7 +65,7 @@ class DisbursementController extends Controller
         ]);
     }
 
-    // Method store tetap aman digunakan tanpa perubahan karena logika if-else 
+    // Method store tetap aman digunakan tanpa perubahan karena logika if-else
     // antara 'terikat' (ke tabel Program) dan 'tidak_terikat' (ke tabel KasUmum) sudah benar.
     public function store(Request $request)
     {
@@ -93,15 +93,12 @@ class DisbursementController extends Controller
             $program = Program::findOrFail($request->input('program_id'));
             $programIdValue = $program->id;
 
-            $totalDikeluarkan = Disbursement::where('program_id', $program->id)->sum('amount');
-            $sisaSaldoKasEfektif = $program->terkumpul - $totalDikeluarkan;
-
-            if ($request->input('amount') > $sisaSaldoKasEfektif) {
+            // SEKARANG CEKNYA LANGSUNG KE SALDO LIVE PROGRAM, BUKAN TERKUMPUL LAGI
+            if ($request->input('amount') > $program->saldo_live) {
                 return redirect()->back()->withErrors([
-                    'amount' => 'Saldo tidak mencukupi! Sisa dana riil program "'.$program->judul.'" adalah Rp '.number_format($sisaSaldoKasEfektif, 0, ',', '.'),
+                    'amount' => 'Saldo tidak mencukupi! Sisa dana riil program "'.$program->judul.'" adalah Rp '.number_format($program->saldo_live, 0, ',', '.'),
                 ]);
             }
-
         } elseif ($sifatPengeluaran === 'tidak_terikat') {
             $kategori = $request->input('kategori_dana_umum');
             $kasUmumModel = KasUmum::where('kategori', $kategori)->first();
@@ -129,10 +126,18 @@ class DisbursementController extends Controller
                 ? '[UNRESTRICTED - KAS '.strtoupper(str_replace('_', ' ', $kategoriDanaUmum)).'] '
                 : '[RESTRICTED - DANA PROGRAM] ';
 
+            // 1. POTONG SALDO JIKA DANA TIDAK TERIKAT (KAS UMUM)
             if ($sifatPengeluaran === 'tidak_terikat' && $kasUmumModel) {
                 $kasUmumModel->decrement('saldo', $request->input('amount'));
             }
 
+            // 2. POTONG SALDO JIKA DANA TERIKAT (PROGRAM)
+            // Menambahkan potongan saldo_live agar nominal terkumpul donatur tidak berkurang
+            if ($sifatPengeluaran === 'terikat' && $programIdValue) {
+                \App\Models\Program::where('id', $programIdValue)->decrement('saldo_live', $request->input('amount'));
+            }
+
+            // 3. SIMPAN LOG HISTORI PENGELUARAN
             Disbursement::create([
                 'order_id_pengeluaran' => $orderIdOut,
                 'judul_pengeluaran' => $request->input('judul_pengeluaran'),
@@ -145,6 +150,7 @@ class DisbursementController extends Controller
                 'keterangan' => $prefixMemo.$request->input('keterangan'),
             ]);
 
+            // 4. UPDATE STATUS MUSTAHIK JIKA PENCAIRAN BERDASARKAN PENGAJUAN
             if ($request->input('applicant_id')) {
                 Applicant::where('id', $request->input('applicant_id'))->update([
                     'status_permohonan' => 'disetujui',

@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Donation;
-use App\Models\Program;
-use App\Models\KasUmum; // Pastikan Model KasUmum di-import ke sini
+use App\Models\KasUmum;
+use App\Models\Program; // Pastikan Model KasUmum di-import ke sini
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Midtrans\Config;
 use Midtrans\Snap;
-use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
@@ -16,8 +16,8 @@ class PaymentController extends Controller
     {
         // 1. VALIDASI DATA INPUT DARI VUE
         $request->validate([
-            'program_id' => 'required|exists:programs,id', 
-            'total' => 'required|numeric|min:10000',   
+            'program_id' => 'required|exists:programs,id',
+            'total' => 'required|numeric|min:10000',
             'nama' => 'nullable|regex:/^[a-zA-Z\s]+$/|max:255',
             'email' => 'nullable|email|max:255',
             'nomor_hp' => 'nullable|regex:/^[0-9]+$/|min:10|max:15',
@@ -34,7 +34,7 @@ class PaymentController extends Controller
             $orderId = 'LAZISMU-'.time();
 
             $namaDonatur = $request->nama ?: 'Hamba Allah';
-            $emailDonatur = $request->email ?: 'donatur@lazismu.org'; 
+            $emailDonatur = $request->email ?: 'donatur@lazismu.org';
             $nomorHp = $request->nomor_hp ?: '081111111111';
 
             $params = [
@@ -48,9 +48,9 @@ class PaymentController extends Controller
                     'phone' => $nomorHp,
                 ],
                 'expiry' => [
-                    'start_time' => date('Y-m-d H:i:s O'), 
+                    'start_time' => date('Y-m-d H:i:s O'),
                     'unit' => 'minute',
-                    'duration' => 3, 
+                    'duration' => 3,
                 ],
             ];
 
@@ -64,7 +64,7 @@ class PaymentController extends Controller
                 'snap_token' => $snapToken,
                 'kategori' => $program->kategori,
                 'keterangan' => $request->keterangan,
-                'email' => $request->email, 
+                'email' => $request->email,
                 'nomor_hp' => $request->nomor_hp,
                 'program_id' => $request->program_id,
             ]);
@@ -82,10 +82,10 @@ class PaymentController extends Controller
         $hashed = hash('sha512', $request->order_id.$request->status_code.$request->gross_amount.$serverKey);
 
         if ($hashed == $request->signature_key) {
-            
+
             // Menggunakan Database Transaction agar aman dan tidak terjadi partial-update jika crash
             DB::transaction(function () use ($request) {
-                
+
                 $donation = Donation::where('order_id', $request->order_id)->first();
 
                 if ($donation) {
@@ -103,7 +103,7 @@ class PaymentController extends Controller
 
                     // 2. Jika status berubah dari 'pending' menjadi 'success' (mencegah double-count akibat hit berulang dari midtrans)
                     if (($currentStatus == 'settlement' || $currentStatus == 'capture') && $oldStatus !== 'success') {
-                        
+
                         // Ambil relasi program terkait
                         $program = Program::find($donation->program_id);
 
@@ -112,7 +112,7 @@ class PaymentController extends Controller
 
                             // KONDISI A: JIKA PROGRAM TANPA TARGET DANA (Saldonya dibelokkan ke Kas Umum)
                             if ($program->target_dana <= 0) {
-                                
+
                                 // Ambil string kategori dari program (nilainya wajib disamakan: 'zakat' atau 'infaq_sedekah')
                                 $kategoriSistem = strtolower($program->kategori);
 
@@ -126,13 +126,15 @@ class PaymentController extends Controller
                             }
 
                             // KONDISI B: JIKA PROGRAM PUNYA TARGET DANA (> 0)
-                            // (Uang masuk ke saldo program itu sendiri, tapi program tanpa target tetap dinaikkan 
-                            //  kolom 'terkumpul'-nya hanya sebagai rekapan display dashboard/landing page)
+                            // UPDATE DUA KOLOM SEKALIGUS
                             $totalDonasiMasuk = Donation::where('program_id', $donation->program_id)
                                 ->where('status', 'success')
                                 ->sum('amount');
 
-                            $program->update(['terkumpul' => (int) $totalDonasiMasuk]);
+                            $program->update([
+                                'terkumpul' => (int) $totalDonasiMasuk, // Untuk display donatur (tidak pernah berkurang)
+                                'saldo_live' => $program->saldo_live + $nominalDonasi, // Saldo riil internal yang akan dipotong pengeluaran
+                            ]);
                         }
                     }
                 }
