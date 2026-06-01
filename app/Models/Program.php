@@ -14,6 +14,7 @@ class Program extends Model
         'gambar',
         'target_dana',
         'terkumpul',
+        'saldo_live',
         'is_active',
     ];
 
