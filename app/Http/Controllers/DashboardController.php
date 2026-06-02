@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Donation;
 use App\Models\Disbursement;
+use App\Models\Donation;
+use App\Models\KasUmum;
 use App\Models\Program;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -14,13 +15,31 @@ class DashboardController extends Controller
     // Fungsi internal pembuat data anak saldo (Milik Bersama)
     private function getSharedDashboardData()
     {
+
+        // $totalAkumulasiMasuk = Donation::where('status', 'success')->sum('amount');
+        $saldoLiveProgram = Program::sum('saldo_live');
+        $saldoKasUmum = KasUmum::sum('saldo');
+        $totalSaldoLiveSekarang = $saldoLiveProgram + $saldoKasUmum;
+
+        // 2. Total Saldo Terkumpul pada Program yang MEMILIKI Target Dana (Target > 0)
+        $totalSaldoDenganTarget = Program::where('target_dana', '>', 0)->sum('terkumpul');
+
+        // 3. Total Saldo Terkumpul pada Program yang TANPA Target Dana (Target <= 0)
+        $totalSaldoTanpaTarget = Program::where('target_dana', '<=', 0)->sum('terkumpul');
+
+        $totalAkumulasiMasuk = $totalSaldoDenganTarget + $totalSaldoTanpaTarget;
+        // 1. Total Pengeluaran Terikat (Sifat Pengeluaran = 'terikat')
+        $pengeluaranTerikat = Disbursement::where('sifat_pengeluaran', 'terikat')->sum('amount');
+
+        // 2. Total Pengeluaran Tidak Terikat (Sifat Pengeluaran = 'tidak_terikat')
+        $pengeluaranTidakTerikat = Disbursement::where('sifat_pengeluaran', 'tidak_terikat')->sum('amount');
+      
+        // 3. Total Seluruh Pengeluaran (Akumulasi gabungan keduanya)
+        $totalKeluar = Disbursement::sum('amount');
+
         $donationsPerKategori = Donation::where('status', 'success')
             ->select('kategori', DB::raw('SUM(amount) as total'))
             ->groupBy('kategori')->get()->pluck('total', 'kategori');
-
-        $pemasukanPerProgram = Program::select('id', 'judul')
-            ->withSum(['donations' => function($query) { $query->where('status', 'success'); }], 'amount')->get();
-
         $disbursementsPerKategori = collect([]);
         $pengeluaranPerPilar = collect([]);
 
@@ -35,7 +54,9 @@ class DashboardController extends Controller
 
         $categories = ['Zakat', 'Infaq', 'Pilar', 'Qurban', 'Wakaf'];
         $summaryKategori = [];
-        $totalSemuaSaldo = 0; $totalMasukKolektif = 0; $totalKeluarKolektif = 0;
+        $totalSemuaSaldo = 0;
+        $totalMasukKolektif = 0;
+        $totalKeluarKolektif = 0;
 
         foreach ($categories as $cat) {
             $masuk = $donationsPerKategori->get($cat, 0);
@@ -47,12 +68,12 @@ class DashboardController extends Controller
             $totalSemuaSaldo += $saldo;
 
             $config = match ($cat) {
-                'Qurban' => ['icon' => 'fa-cow', 'color' => 'orange'],
-                'Zakat'  => ['icon' => 'fa-percentage', 'color' => 'orange'],
-                'Infaq'  => ['icon' => 'fa-hand-holding-heart', 'color' => 'orange'],
-                'Wakaf'  => ['icon' => 'fa-handshake-angle', 'color' => 'orange'],
-                'Pilar'  => ['icon' => 'fa-clover', 'color' => 'orange'],
-                default  => ['icon' => 'fa-wallet', 'color' => 'orange'],
+                'qurban' => ['icon' => 'fa-cow', 'color' => 'orange'],
+                'zakat' => ['icon' => 'fa-percentage', 'color' => 'orange'],
+                'infaq_sodaqoh' => ['icon' => 'fa-hand-holding-heart', 'color' => 'orange'],
+                'wakaf' => ['icon' => 'fa-handshake-angle', 'color' => 'orange'],
+                'pilar' => ['icon' => 'fa-clover', 'color' => 'orange'],
+                default => ['icon' => 'fa-wallet', 'color' => 'orange'],
             };
 
             $summaryKategori[] = [
@@ -63,13 +84,20 @@ class DashboardController extends Controller
         $latestDonations = Donation::where('status', 'success')->latest()->take(5)->get();
 
         return [
-            'totalMasuk'        => (int) $totalMasukKolektif,
-            'totalKeluar'       => (int) $totalKeluarKolektif,
-            'totalSemuaSaldo'   => (int) $totalSemuaSaldo,
-            'stats_kategori'    => $summaryKategori,
-            'pemasukan_program' => $pemasukanPerProgram,
+            'totalMasuk' => (int) $totalMasukKolektif,
+            'totalKeluar' => (int) $totalKeluarKolektif,
+            'totalSemuaSaldo' => (int) $totalSemuaSaldo,
             'pengeluaran_pilar' => $pengeluaranPerPilar,
-            'latestDonations'   => $latestDonations,
+            'latestDonations' => $latestDonations,
+            'totalseluruhdonasi' => (int) $totalAkumulasiMasuk,
+            'saldoLiveProgram' => (int) $saldoLiveProgram,
+            'saldoLiveKasUmum' => (int) $saldoKasUmum,
+            'totalSaldoLiveSekarang' => (int) $totalSaldoLiveSekarang,
+            'totalSaldoDenganTarget' => (int) $totalSaldoDenganTarget,
+            'totalSaldoTanpaTarget' => (int) $totalSaldoTanpaTarget,
+            'pengeluaranTerikat' => (int) $pengeluaranTerikat,
+            'pengeluaranTidakTerikat' => (int) $pengeluaranTidakTerikat,
+            'totalPengeluaran' => (int) $totalKeluar,
         ];
     }
 
@@ -77,6 +105,7 @@ class DashboardController extends Controller
     public function transparansi()
     {
         $data = $this->getSharedDashboardData();
+
         return Inertia::render('Donasi/Transparansi', $data);
     }
 
@@ -84,6 +113,7 @@ class DashboardController extends Controller
     public function staffIndex()
     {
         $data = $this->getSharedDashboardData();
+
         // Diarahkan ke file Vue khusus staff (misal pake StaffLayout)
         return Inertia::render('Staff/Dashboard', $data);
     }
@@ -92,6 +122,7 @@ class DashboardController extends Controller
     public function adminIndex()
     {
         $data = $this->getSharedDashboardData();
+
         // Diarahkan ke file Vue khusus admin (misal ada grafik konfigurasi sistem tambahan)
         return Inertia::render('Admin/Dashboard', $data);
     }

@@ -262,9 +262,9 @@ const formatInputUang = (event) => {
                                         class="w-full border-gray-200 rounded-xl focus:ring-orange-500">
                                         <option value="zakat">Zakat</option>
                                         <option value="infaq_sodaqoh">Infaq/Sodaqoh</option>
-                                        <option value="Qurban">Qurban</option>
-                                        <option value="Wakaf">Wakaf</option>
-                                        <option value="Pilar">Pilar</option>
+                                        <option value="qurban">Qurban</option>
+                                        <option value="wakaf">Wakaf</option>
+                                        <option value="pilar">Pilar</option>
                                     </select>
                                 </div>
                                 

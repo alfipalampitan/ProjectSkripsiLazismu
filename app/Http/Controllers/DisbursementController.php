@@ -23,14 +23,14 @@ class DisbursementController extends Controller
 
         // 2. KOREKSI DATA PROGRAM (HANYA YANG TERIKAT / MEMILIKI TARGET DANA)
         // Menampilkan program kerja/campaign aktif yang mengumpulkan target dana tertentu (> 0)
-        $programsTerikat = Program::select('id', 'judul', 'terkumpul')
+        $programsTerikat = Program::select('id', 'judul', 'saldo_live')
             ->where('target_dana', '>', 0)
             ->latest()
             ->get();
 
         // 3. Hitung statistik makro finansial atas berdasarkan data riil
         // Total Saldo Live = Total saldo terikat di program + Total saldo bebas di seluruh kategori kas umum
-        $totalSaldoGlobal = Program::sum('terkumpul') + KasUmum::sum('saldo');
+        $totalSaldoGlobal = Program::sum('saldo_live') + KasUmum::sum('saldo');
         $totalTerikat = Disbursement::where('sifat_pengeluaran', 'terikat')->sum('amount');
         $totalBebas = Disbursement::where('sifat_pengeluaran', 'tidak_terikat')->sum('amount');
 

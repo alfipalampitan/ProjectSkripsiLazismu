@@ -225,7 +225,8 @@ const submit = () => {
                                     <tr class="font-bold">
                                         <th class="px-4 py-3.5 text-center w-12">No</th>
                                         <th class="px-4 py-3.5">Nama Program Kerja</th>
-                                        <th class="px-4 py-3.5 text-right">Saldo Terkumpul</th>
+                                        <th class="px-4 py-3.5 text-right">Saldo Rill
+                                        </th>
                                         <th class="px-4 py-3.5 text-center">Aksi</th>
                                     </tr>
                                 </thead>
@@ -238,7 +239,7 @@ const submit = () => {
                                             {{ prog.judul }}
                                         </td>
                                         <td class="px-4 py-4 text-right text-emerald-600 font-bold font-mono text-sm">
-                                            Rp{{ prog.terkumpul?.toLocaleString('id-ID') ?? '0' }}
+                                            Rp{{ Number(prog.saldo_live ?? 0).toLocaleString('id-ID') }}
                                         </td>
                                         <td class="px-4 py-4 text-center" @click.stop>
                                             <button @click="selectProgram(prog)"

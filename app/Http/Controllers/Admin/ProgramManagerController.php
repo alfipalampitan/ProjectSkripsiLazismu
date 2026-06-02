@@ -28,7 +28,7 @@ class ProgramManagerController extends Controller
         // 1. Validasi Input
         $request->validate([
             'judul' => 'required|string|max:255',
-            'kategori' => 'required|in:zakat,infaq_sodaqoh,Qurban,Wakaf,Pilar',
+            'kategori' => 'required|in:zakat,infaq_sodaqoh,qurban,wakaf,pilar',
             'deskripsi' => 'required',
             'gambar' => 'required|image|mimes:jpg,jpeg,png|max:10000',
             'target_dana' => 'required|numeric',
@@ -60,7 +60,7 @@ class ProgramManagerController extends Controller
 
         $request->validate([
             'judul' => 'required|string|max:255',
-            'kategori' => 'required|in:zakat,infaq_sodaqoh,Qurban,Wakaf,Pilar',
+            'kategori' => 'required|in:zakat,infaq_sodaqoh,qurban,wakaf,pilar',
             'deskripsi' => 'required',
             'target_dana' => 'required|numeric',
             'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:10000', // optional saat edit

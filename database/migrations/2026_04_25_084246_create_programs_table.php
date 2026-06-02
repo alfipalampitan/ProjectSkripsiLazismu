@@ -15,11 +15,12 @@ return new class extends Migration
             $table->id();
             $table->string('judul');
             $table->string('slug')->unique(); // Untuk URL (misal: zakat-maal)
-            $table->enum('kategori', ['Zakat', 'Infaq', 'Qurban', 'Wakaf', 'Pilar']);
+            $table->enum('kategori', ['zakat', 'infaq', 'qurban', 'wakaf', 'pilar']);
             $table->text('deskripsi');
             $table->string('gambar');
             $table->decimal('target_dana', 15, 2)->nullable();
             $table->decimal('terkumpul', 15, 2)->default(0);
+            $table->decimal('saldo_live', 15, 2)->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
