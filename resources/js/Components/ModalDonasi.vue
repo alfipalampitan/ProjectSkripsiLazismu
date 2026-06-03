@@ -143,7 +143,7 @@ const setNominal = (amount) => {
                 class="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col animate-modal">
 
                 <div class="bg-orange-500 p-6 text-white relative">
-                    <h3 class="text-xl font-bold">Infaq & Sedekah</h3>
+                    <h3 class="text-xl font-bold">Ayo Berdonasi dan Niatkan Lillahita'ala</h3>
                     <p class="text-sm opacity-90 line-clamp-1">{{ program?.judul || 'Pilih Program' }}</p>
 
                     <button @click="$emit('close')"

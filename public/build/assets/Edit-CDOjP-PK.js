@@ -1,0 +1,1 @@
+import{_ as o}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{c as t,b as s,o as r}from"./app-DxuEVMdO.js";const a={},c={class:"p-6"};function n(l,e){return r(),t("div",c,[...e[0]||(e[0]=[s("h1",{class:"text-xl font-bold"},"Halaman Placeholder (Skripsi)",-1)])])}const _=o(a,[["render",n]]);export{_ as default};

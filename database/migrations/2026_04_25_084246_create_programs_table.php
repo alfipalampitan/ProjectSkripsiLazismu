@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('judul');
             $table->string('slug')->unique(); // Untuk URL (misal: zakat-maal)
-            $table->enum('kategori', ['zakat', 'infaq', 'qurban', 'wakaf', 'pilar']);
+            $table->enum('kategori', ['zakat', 'infaq_sodaqoh', 'qurban', 'wakaf', 'pilar']);
             $table->text('deskripsi');
             $table->string('gambar');
             $table->decimal('target_dana', 15, 2)->nullable();
