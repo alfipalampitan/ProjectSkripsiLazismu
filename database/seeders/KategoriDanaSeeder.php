@@ -12,11 +12,11 @@ class KategoriDanaSeeder extends Seeder
         $categories = [
             [
                 'kategori' => 'zakat',
-                'saldo' => 21000000,
+                'saldo' => 0,
             ],
             [
                 'kategori' => 'infaq_sodaqoh',
-                'saldo' => 1000000,
+                'saldo' => 0,
             ],
         ];
 
