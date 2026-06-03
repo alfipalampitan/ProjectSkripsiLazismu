@@ -102,6 +102,7 @@ class PaymentController extends Controller
                     }
 
                     // 2. Jika status berubah dari 'pending' menjadi 'success' (mencegah double-count akibat hit berulang dari midtrans)
+                    // 2. Jika status berubah dari 'pending' menjadi 'success'
                     if (($currentStatus == 'settlement' || $currentStatus == 'capture') && $oldStatus !== 'success') {
 
                         // Ambil relasi program terkait
@@ -110,31 +111,37 @@ class PaymentController extends Controller
                         if ($program) {
                             $nominalDonasi = $donation->amount;
 
-                            // KONDISI A: JIKA PROGRAM TANPA TARGET DANA (Saldonya dibelokkan ke Kas Umum)
-                            if ($program->target_dana <= 0) {
-
-                                // Ambil string kategori dari program (nilainya wajib disamakan: 'zakat' atau 'infaq_sedekah')
-                                $kategoriSistem = strtolower($program->kategori);
-
-                                // Cari kantong besarnya di tabel kas_umum
-                                $kasUmum = KasUmum::where('kategori', $kategoriSistem)->first();
-
-                                if ($kasUmum) {
-                                    // Masukkan dan akumulasikan ke saldo kas_umum yang sesuai
-                                    $kasUmum->increment('saldo', $nominalDonasi);
-                                }
-                            }
-
-                            // KONDISI B: JIKA PROGRAM PUNYA TARGET DANA (> 0)
-                            // UPDATE DUA KOLOM SEKALIGUS
+                            // Hitung total akumulasi terkumpul dari seluruh donasi sukses untuk program ini
                             $totalDonasiMasuk = Donation::where('program_id', $donation->program_id)
                                 ->where('status', 'success')
                                 ->sum('amount');
 
-                            $program->update([
-                                'terkumpul' => (int) $totalDonasiMasuk, // Untuk display donatur (tidak pernah berkurang)
-                                'saldo_live' => $program->saldo_live + $nominalDonasi, // Saldo riil internal yang akan dipotong pengeluaran
-                            ]);
+                            // KONDISI A: JIKA PROGRAM TANPA TARGET DANA (Target <= 0)
+                            if ($program->target_dana <= 0) {
+
+                                // 1. Belokkan uangnya ke Kas Umum sesuai kategorinya
+                                $kategoriSistem = strtolower($program->kategori);
+                                $kasUmum = KasUmum::where('kategori', $kategoriSistem)->first();
+
+                                if ($kasUmum) {
+                                    $kasUmum->increment('saldo', $nominalDonasi);
+                                }
+
+                                // 2. Update 'terkumpul' saja di program, saldo_live TIDAK bertambah
+                                $program->update([
+                                    'terkumpul' => (int) $totalDonasiMasuk,
+                                    // 'saldo_live' sengaja tidak dimasukkan agar nilainya tetap
+                                ]);
+                            }
+
+                            // KONDISI B: JIKA PROGRAM PUNYA TARGET DANA (Target > 0)
+                            else {
+                                // Update 'terkumpul' untuk tampilan, dan akumulasikan nominal ke 'saldo_live'
+                                $program->update([
+                                    'terkumpul' => (int) $totalDonasiMasuk,
+                                    'saldo_live' => $program->saldo_live + $nominalDonasi,
+                                ]);
+                            }
                         }
                     }
                 }
