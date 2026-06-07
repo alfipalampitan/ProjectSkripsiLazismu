@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import Swal from 'sweetalert2'; // Import SweetAlert2
+import DonaturLayout from '@/Layouts/DonaturLayout.vue';
 
 // 1. Terima data props dari ProgramController@kalkulatorZakat
 const props = defineProps({
@@ -259,6 +260,7 @@ const tunaikanZakat = async () => {
 </script>
 
 <template>
+    <DonaturLayout>
     <div class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col items-center py-12 px-4">
 
         <div class="text-center mb-10 max-w-xl">
@@ -446,6 +448,7 @@ const tunaikanZakat = async () => {
 
         </div>
     </div>
+    </DonaturLayout>
 </template>
 
 <style scoped>

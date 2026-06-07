@@ -13,7 +13,7 @@ const isModalOpen = ref(false);
 const isEditing = ref(false);
 
 // State tambahan untuk melacak opsi target dana di UI modal
-const tipeTarget = ref('pakai_target'); 
+const tipeTarget = ref('pakai_target');
 
 const form = useForm({
     judul: '',
@@ -35,6 +35,16 @@ watch(tipeTarget, (newVal) => {
 // Pencarian & Filter
 const searchQuery = ref('');
 const selectedKategori = ref('Semua Kategori');
+
+// Daftarkan list opsi dropdown beserta value database dan label cantiknya
+const opsiKategori = [
+    { value: 'Semua Kategori', label: 'Semua Kategori' },
+    { value: 'zakat', label: 'Zakat' },
+    { value: 'infaq_sodaqoh', label: 'Infaq Sodaqoh' }, // value pakai _, label pakai spasi
+    { value: 'qurban', label: 'Qurban' },
+    { value: 'wakaf', label: 'Wakaf' },
+    { value: 'pilar', label: 'Pilar' }
+];
 
 const filteredPrograms = computed(() => {
     return props.programs.filter(p => {
@@ -138,6 +148,7 @@ const formatInputUang = (event) => {
 </script>
 
 <template>
+
     <Head title="Manajemen Program" />
     <AuthenticatedLayout>
         <div class="py-12">
@@ -165,13 +176,10 @@ const formatInputUang = (event) => {
                             class="pl-10 w-full rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500">
                     </div>
                     <select v-model="selectedKategori"
-                        class="rounded-xl border-gray-200 focus:ring-orange-500 w-full md:w-64">
-                        <option>Semua Kategori</option>
-                        <option>Zakat</option>
-                        <option>Infaq</option>
-                        <option>Qurban</option>
-                        <option>Wakaf</option>
-                        <option>Pilar</option>
+                        class="rounded-xl border-gray-200 focus:ring-orange-500 w-full md:w-64 capitalize">
+                        <option v-for="opsi in opsiKategori" :key="opsi.value" :value="opsi.value">
+                            {{ opsi.label }}
+                        </option>
                     </select>
                 </div>
 
@@ -194,10 +202,12 @@ const formatInputUang = (event) => {
                             <div class="flex justify-between items-center mb-5">
                                 <span class="text-xs text-gray-400">Target Dana:</span>
                                 <!-- Logika Tampilan: Jika target_dana kosong atau 0, render sebagai Tanpa Target -->
-                                <span v-if="program.target_dana && parseInt(program.target_dana) > 0" class="text-sm font-bold text-gray-700">
+                                <span v-if="program.target_dana && parseInt(program.target_dana) > 0"
+                                    class="text-sm font-bold text-gray-700">
                                     {{ formatRupiah(program.target_dana) }}
                                 </span>
-                                <span v-else class="text-sm font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-lg">
+                                <span v-else
+                                    class="text-sm font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-lg">
                                     Tanpa Target (Open)
                                 </span>
                             </div>
@@ -250,8 +260,10 @@ const formatInputUang = (event) => {
                                 <label class="block text-sm font-bold text-gray-700 mb-1">Kebutuhan Target Dana</label>
                                 <select v-model="tipeTarget"
                                     class="w-full border-gray-200 rounded-xl focus:ring-orange-500">
-                                    <option value="pakai_target">Menggunakan Target Nominal (Contoh: Bencana, Pembangunan)</option>
-                                    <option value="tanpa_target">Tanpa Target Dana / Terbuka (Contoh: Zakat Maal, Infaq)</option>
+                                    <option value="pakai_target">Menggunakan Target Nominal (Contoh: Bencana,
+                                        Pembangunan)</option>
+                                    <option value="tanpa_target">Tanpa Target Dana / Terbuka (Contoh: Zakat Maal, Infaq)
+                                    </option>
                                 </select>
                             </div>
 
@@ -267,17 +279,15 @@ const formatInputUang = (event) => {
                                         <option value="pilar">Pilar</option>
                                     </select>
                                 </div>
-                                
+
                                 <!-- Input Target Dana: Otomatis tersembunyi/tidak wajib jika memilih 'tanpa_target' -->
                                 <div class="sm:col-span-8 transition-all duration-300">
                                     <label class="block text-sm font-bold text-gray-700 mb-1">Target Dana (Rp)</label>
-                                    <input 
-                                        :value="formatTampilanInput(form.target_dana)" 
-                                        @input="formatInputUang"
-                                        type="text" 
+                                    <input :value="formatTampilanInput(form.target_dana)" @input="formatInputUang"
+                                        type="text"
                                         class="w-full border-gray-200 rounded-xl focus:ring-orange-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                                         :disabled="tipeTarget === 'tanpa_target'"
-                                        :required="tipeTarget === 'pakai_target'" 
+                                        :required="tipeTarget === 'pakai_target'"
                                         :placeholder="tipeTarget === 'tanpa_target' ? 'Otomatis Tanpa Target' : 'Contoh: 10.000.000'" />
                                 </div>
                             </div>

@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useForm, Link } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
+import StaffLayout from '@/Layouts/StaffLayout.vue';
 
 // 1. Menerima data dari Laravel Backend
 const props = defineProps({
@@ -230,6 +231,7 @@ const slugify = (text) => {
 </script>
 
 <template>
+    <StaffLayout>
     <div class="min-h-screen bg-gray-50 p-6">
         <div class="max-w-6xl mx-auto">
 
@@ -516,6 +518,7 @@ const slugify = (text) => {
 
         </div>
     </div>
+    </StaffLayout>
 </template>
 
 <style scoped>

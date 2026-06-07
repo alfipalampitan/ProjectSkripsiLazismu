@@ -147,7 +147,7 @@ const isModalOpen = ref(false);
 
                             <div class="text-right">
                                 <p class="text-gray-900 font-extrabold text-sm">
-                                    Rp{{ Number(d.amount || 0).toLocaleString('id-ID') }}
+                                    Rp{{ Number(d.jumlah || 0).toLocaleString('id-ID') }}
                                 </p>
                             </div>
                         </div>
