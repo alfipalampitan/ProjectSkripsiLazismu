@@ -23,7 +23,7 @@ const menuItems = [
     { name: 'Transaksi', icon: 'fa-exchange-alt', route: 'transaksi' },
     { name: 'Kelola Pengguna', icon: 'fa-users', route: 'pengguna' },
     { name: 'Program Donasi', icon: 'fa-hand-holding-heart', route: 'programs.index' },
-    { name: 'Laporan', icon: 'fa-file-invoice', route: 'laporan.index' },
+    { name: 'Laporan', icon: 'fa-file-invoice', route: 'admin.laporan.index' },
     { name: 'Pengaturan', icon: 'fa-cog', route: 'settings.index' },
 ];
 

@@ -1,5 +1,5 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import StaffLayout from '@/Layouts/StaffLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -24,7 +24,7 @@ const updateFilter = (key, value) => {
     };
     currentFilters[key] = value;
 
-    router.get(route('admin.laporan.index'), currentFilters, {
+    router.get(route('staff.laporan.index'), currentFilters, {
         preserveState: true,
         replace: true
     });
@@ -36,14 +36,14 @@ const formatRupiah = (val) => {
 </script>
 
 <template>
-    <AuthenticatedLayout>
+    <StaffLayout>
 
         <Head title="Laporan Keuangan Admin" />
         <div class="py-6 px-4 md:px-8">
 
             <div class="flex flex-col lg:flex-row lg:items-center justify-between mb-8 gap-4">
                 <div>
-                    <h1 class="text-xl md:text-2xl font-bold text-gray-800">Laporan Kas Bulanan (Admin)</h1>
+                    <h1 class="text-xl md:text-2xl font-bold text-gray-800">Laporan Kas Bulanan (Staff)</h1>
                     <p class="text-sm text-gray-500 font-medium">Rekapitulasi transparansi dana masuk dan keluar
                         Lazismu.</p>
                 </div>
@@ -90,8 +90,6 @@ const formatRupiah = (val) => {
                 </div>
 
                 <div v-if="activeTab === 'pengeluaran'" class="w-full">
-                    <span class="block text-[10px] font-black uppercase text-gray-400 mb-1">Sifat Urgensi
-                        Pengeluaran</span>
                     <select :value="filters.sifat_pengeluaran"
                         @change="updateFilter('sifat_pengeluaran', $event.target.value)"
                         class="w-full bg-gray-50 border border-gray-200 text-gray-700 rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-orange-500">
@@ -146,7 +144,7 @@ const formatRupiah = (val) => {
                                         <div class="text-green-600 font-black">{{ formatRupiah(lap.total_dana) }}</div>
                                     </td>
                                     <td class="p-5 text-right">
-                                        <a :href="route('admin.laporan.download', { bulan: lap.bulan, type: filters.type, program_id: filters.program_id })"
+                                        <a :href="route('staff.laporan.download', { bulan: lap.bulan, type: filters.type, program_id: filters.program_id })"
                                             target="_blank"
                                             class="inline-flex items-center bg-gray-900 text-white hover:bg-orange-500 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all">
                                             <i class="fa-solid fa-file-pdf mr-2"></i> PDF
@@ -196,7 +194,7 @@ const formatRupiah = (val) => {
                                         <div class="text-red-500 font-black">{{ formatRupiah(lap.total_dana) }}</div>
                                     </td>
                                     <td class="p-5 text-right">
-                                        <a :href="route('admin.laporan.download_pengeluaran', { bulan: lap.bulan, sifat_pengeluaran: filters.sifat_pengeluaran })"
+                                        <a :href="route('staff.laporan.download_pengeluaran', { bulan: lap.bulan, sifat_pengeluaran: filters.sifat_pengeluaran })"
                                             target="_blank"
                                             class="inline-flex items-center bg-gray-900 text-white hover:bg-orange-500 px-5 py-2.5 rounded-2xl text-xs font-bold transition-all">
                                             <i class="fa-solid fa-file-pdf mr-2"></i> PDF
@@ -210,5 +208,5 @@ const formatRupiah = (val) => {
             </div>
 
         </div>
-    </AuthenticatedLayout>
+    </StaffLayout>
 </template>

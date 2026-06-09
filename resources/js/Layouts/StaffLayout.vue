@@ -21,10 +21,10 @@ watch(isSidebarOpen, (newValue) => {
 // 2. Menu Items Khusus Staff
 const menuItems = [
     { name: 'Dashboard', icon: 'fa-chart-pie', route: 'staff.dashboard' },
-    { name: 'Donasi Masuk', icon: 'fa-hand-holding-dollar', route: 'donasi-tunai.index' }, // Sesuaikan nama route-nya
+    { name: 'Input Donasi Tunai', icon: 'fa-hand-holding-dollar', route: 'donasi-tunai.index' }, // Sesuaikan nama route-nya
     { name: 'Input Pengeluaran', icon: 'fa-file-signature', route: 'pengeluaran.create' }, // Contoh route nanti
     { name: 'Input Pilar', icon: 'fa-wpforms', route: 'pilar-form.index' },
-    { name: 'Laporan Saya', icon: 'fa-clipboard-list', route: '#' },
+    { name: 'Laporan Saya', icon: 'fa-clipboard-list', route: 'staff.laporan.index' },
 ];
 
 const page = usePage();

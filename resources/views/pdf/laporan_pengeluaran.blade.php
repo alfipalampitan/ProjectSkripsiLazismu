@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Laporan Donasi {{ $bulan }}</title>
+    <title>Laporan Pengeluaran {{ $bulan }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -30,7 +30,6 @@
             vertical-align: middle;
         }
 
-        /* Kotak logo silang pengganti gambar jika belum ada file image */
         .logo-placeholder {
             width: 60px;
             height: 60px;
@@ -89,7 +88,6 @@
             color: #111;
         }
 
-        /* Garis Ganda Kop Surat */
         .line-double {
             border-top: 3px solid #000;
             border-bottom: 1px solid #000;
@@ -165,16 +163,16 @@
                 <img src="{{ public_path('images/Lazismu.png') }}" width="65" height="65">
             </td>
             <td class="text-kop">
-                <h2>LAPORAN TRANSAKSI PEMASUKAN</h2>
+                <h2>LAPORAN TRANSAKSI PENGELUARAN</h2>
                 <h3>
-                    @if($type === 'all')
+                    @if($sifat_pengeluaran === 'all')
                         KESELURUHAN
-                    @elseif($type === 'cash')
-                        TUNAI (CASH)
-                    @elseif($type === 'transfer')
-                        NON TUNAI (TRANSFER)
+                    @elseif($sifat_pengeluaran === 'Terikat')
+                        DANA TERIKAT
+                    @elseif($sifat_pengeluaran === 'Tidak_Terikat' || $sifat_pengeluaran === 'Tidak Terikat')
+                        DANA TIDAK TERIKAT
                     @else
-                        {{ strtoupper($type) }}
+                        {{ strtoupper($sifat_pengeluaran) }}
                     @endif
                 </h3>
                 <h4>LAZISMU KOTA BANJARMASIN</h4>
@@ -187,37 +185,40 @@
     <div class="line-double"></div>
 
     <div style="margin-bottom: 10px; font-weight: bold;">
-        Periode Laporan: {{ $bulan }} (Metode: {{ strtoupper($type) }})
+        Periode Laporan: {{ $bulan }} (Sifat Dana: {{ strtoupper($sifat_pengeluaran) }})
     </div>
 
     <table class="data-table">
         <thead>
             <tr>
                 <th style="width: 5%;">NO</th>
-                <th style="width: 20%;">Nama Donatur</th>
+                <th style="width: 25%;">Penerima / Keperluan</th>
                 <th style="width: 15%;">Tanggal</th>
-                <th style="width: 15%;">Nominal</th>
-                <th style="width: 12%;">Tipe</th>
-                <th style="width: 13%;">Kategori</th>
-                <th style="width: 20%;">Keterangan</th>
+                <th style="width: 15%;">Nominal Keluar</th>
+                <th style="width: 15%;">Sifat Dana</th>
+                <th style="width: 25%;">Keterangan</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($donasi as $key => $item)
+            @foreach($pengeluaran as $key => $item)
+                @php
+                    $namaPenerima = $item->applicant
+                        ? $item->applicant->nama_pemohon
+                        : ($item->judul_pengeluaran ?: 'Pengeluaran Lazismu');
+                @endphp
                 <tr>
                     <td class="text-center">{{ $key + 1 }}</td>
-                    <td>{{ $item->user_name ?: 'Hamba Allah' }}</td>
+                    <td>{{ $namaPenerima }}</td>
                     <td class="text-center">{{ $item->created_at->format('d/m/Y') }}</td>
                     <td class="text-right">Rp {{ number_format($item->amount, 0, ',', '.') }}</td>
-                    <td class="text-center">{{ strtoupper($item->type) }}</td>
-                    <td class="text-center">{{ $item->kategori }}</td>
+                    <td class="text-center">{{ $item->sifat_pengeluaran ?: '-' }}</td>
                     <td>{{ $item->keterangan ?: '-' }}</td>
                 </tr>
             @endforeach
-            @if($donasi->isEmpty())
+            @if($pengeluaran->isEmpty())
                 <tr>
-                    <td colspan="7" class="text-center" style="padding: 20px; font-style: italic; color: #888;">
-                        Tidak ada data transaksi pemasukan pada periode ini.
+                    <td colspan="6" class="text-center" style="padding: 20px; font-style: italic; color: #888;">
+                        Tidak ada data transaksi pengeluaran pada periode ini.
                     </td>
                 </tr>
             @endif
@@ -225,7 +226,7 @@
     </table>
 
     <div class="total">
-        Total Dana Masuk: Rp {{ number_format($total, 0, ',', '.') }}
+        Total Dana Keluar: Rp {{ number_format($total, 0, ',', '.') }}
     </div>
 
     <div class="ttd-container">

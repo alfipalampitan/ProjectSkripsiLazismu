@@ -67,8 +67,12 @@ Route::middleware(['auth', 'verified', 'role:admin'])->group(function () {
     Route::post('/programs-update/{id}', [ProgramManagerController::class, 'update_manual'])->name('programs.update_manual');
     Route::delete('/programs/{id}', [ProgramManagerController::class, 'destroy'])->name('programs.destroy');
 
-    Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan.index');
-    Route::get('/laporan/download/{bulan}', [LaporanController::class, 'download'])->name('laporan.download');
+    // Ganti rute laporan lama admin dengan pola ber-prefix ini
+    Route::name('admin.')->group(function () {
+        Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan.index');
+        Route::get('/laporan/download/{bulan}', [LaporanController::class, 'download'])->name('laporan.download');
+        Route::get('/laporan/download-pengeluaran/{bulan}', [LaporanController::class, 'downloadPengeluaran'])->name('laporan.download_pengeluaran');
+    });
 
     // Halaman tampil
     Route::get('/pengaturan', [SettingController::class, 'index'])->name('settings.index');
@@ -115,6 +119,12 @@ Route::middleware(['auth', 'verified', 'role:staff'])->group(function () {
     // Route untuk memproses persetujuan sekaligus memotong saldo donasi (Pencairan)
     Route::post('/staff/permohonan/{id}/disburse', [PilarFormController::class, 'disburseApplicant'])->name('staff.applicants.disburse');
 
+    // Tambahkan rute ini di dalam group middleware role:staff milikmu
+    Route::name('staff.')->group(function () {
+        Route::get('/staff/laporan', [LaporanController::class, 'index'])->name('laporan.index');
+        Route::get('/staff/laporan/download/{bulan}', [LaporanController::class, 'download'])->name('laporan.download');
+        Route::get('/staff/laporan/download-pengeluaran/{bulan}', [LaporanController::class, 'downloadPengeluaran'])->name('laporan.download_pengeluaran');
+    });
 });
 
 Route::post('/api/midtrans-callback', [PaymentController::class, 'callback']);
