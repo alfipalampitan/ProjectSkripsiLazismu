@@ -202,13 +202,29 @@
         <tbody>
             @foreach($pengeluaran as $key => $item)
                 @php
-                    $namaPenerima = $item->applicant
-                        ? $item->applicant->nama_pemohon
-                        : ($item->judul_pengeluaran ?: 'Pengeluaran Lazismu');
+                    // --- LOGIKA 1: MENENTUKAN PENERIMA ---
+                    // Diambil dari nama pemohon asli. Jika kosong, pakai judul pengeluaran / default
+                    $penerima = $item->applicant ? $item->applicant->nama_pemohon : ($item->judul_pengeluaran ?: 'Pengeluaran Lazismu');
+
+                    // --- LOGIKA 2: MENENTUKAN KEPERLUAN ---
+                    // Jika applicant punya kaitan ke pilarForm, ambil nama_penyaluran-nya. Jika tidak ada, beri tanda strip (-)
+                    if ($item->applicant && $item->applicant->pilarForm && $item->applicant->pilarForm->nama_penyaluran) {
+                        $keperluan = $item->applicant->pilarForm->nama_penyaluran;
+                    } else {
+                        $keperluan = '-';
+                    }
                 @endphp
+
                 <tr>
                     <td class="text-center">{{ $key + 1 }}</td>
-                    <td>{{ $namaPenerima }}</td>
+
+                    <td>
+                        <strong>{{ $penerima }}</strong>
+                        @if($keperluan !== '-')
+                            <br><span style="color: #555; font-size: 10px; font-style: italic;">Program: {{ $keperluan }}</span>
+                        @endif
+                    </td>
+
                     <td class="text-center">{{ $item->created_at->format('d/m/Y') }}</td>
                     <td class="text-right">Rp {{ number_format($item->amount, 0, ',', '.') }}</td>
                     <td class="text-center">{{ $item->sifat_pengeluaran ?: '-' }}</td>

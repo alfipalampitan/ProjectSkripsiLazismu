@@ -137,7 +137,7 @@ class LaporanController extends Controller
         $sifat_pengeluaran = $request->query('sifat_pengeluaran', 'all');
 
         // 2. Query data pengeluaran dengan filter bulan DAN sifat_pengeluaran
-        $pengeluaran = Disbursement::with('applicant')->whereRaw("DATE_FORMAT(created_at, '%M %Y') = ?", [$bulan])
+        $pengeluaran = Disbursement::with('applicant.pilarForm')->whereRaw("DATE_FORMAT(created_at, '%M %Y') = ?", [$bulan])
             ->when($sifat_pengeluaran !== 'all', function ($query) use ($sifat_pengeluaran) {
                 return $query->where('sifat_pengeluaran', $sifat_pengeluaran);
             })

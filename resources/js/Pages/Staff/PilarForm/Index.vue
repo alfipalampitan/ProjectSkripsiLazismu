@@ -310,7 +310,7 @@ const slugify = (text) => {
             </div>
 
             <div v-if="isModalOpen"
-                class="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4">
+                class="fixed inset-0 z-[999] overflow-y-auto bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4">
                 <div
                     class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-fade-in">
 

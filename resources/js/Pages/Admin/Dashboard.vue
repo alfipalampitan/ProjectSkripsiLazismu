@@ -70,21 +70,21 @@ const formatRupiah = (number) => {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <!-- Card 1: Total Akumulasi Masuk -->
                         <div class="bg-gradient-to-br from-emerald-800 to-teal-700 p-5 rounded-xl text-white shadow-sm relative overflow-hidden">
-                            <p class="text-[10px] font-black uppercase tracking-widest text-emerald-200">Total Akumulasi Dana Masuk</p>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-emerald-200">Total Akumulasi Dana Sebenarnya </p>
                             <p class="text-2xl font-black mt-1">{{ formatRupiah(totalSaldoLiveSekarang) }}</p>
                             <div class="absolute right-3 bottom-2 text-3xl opacity-15">💰</div>
                         </div>
 
                         <!-- Card 2: Total Saldo Live Program -->
                         <div class="bg-gradient-to-br from-slate-900 to-slate-800 p-5 rounded-xl text-white shadow-sm relative overflow-hidden">
-                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Saldo Live Program (Terikat)</p>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Saldo Program (Terikat)</p>
                             <p class="text-2xl font-black mt-1">{{ formatRupiah(saldoLiveProgram) }}</p>
                             <div class="absolute right-3 bottom-2 text-3xl opacity-10">📁</div>
                         </div>
 
                         <!-- Card 3: Total Saldo Live Kas Umum -->
                         <div class="bg-gradient-to-br from-blue-900 to-indigo-800 p-5 rounded-xl text-white shadow-sm relative overflow-hidden">
-                            <p class="text-[10px] font-black uppercase tracking-widest text-blue-200">Total Saldo Live Kas Umum</p>
+                            <p class="text-[10px] font-black uppercase tracking-widest text-blue-200">Total Saldo Kas Umum (Tidak Terikat)</p>
                             <p class="text-2xl font-black mt-1">{{ formatRupiah(saldoLiveKasUmum) }}</p>
                             <div class="absolute right-3 bottom-2 text-3xl opacity-15">💼</div>
                         </div>

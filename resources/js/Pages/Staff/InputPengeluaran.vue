@@ -156,6 +156,24 @@ const submit = () => {
         }
     });
 };
+
+// 1. Fungsi untuk mengubah angka biasa menjadi berformat titik (Tampilan UI)
+const formatRupiah = (value) => {
+    if (!value) return '';
+    // Menghilangkan semua karakter selain angka, lalu memformat dengan titik tiap 3 digit
+    return value.toString().replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
+// 2. Fungsi untuk menangkap ketikan user, membuang titiknya, lalu menyimpannya sebagai angka murni ke state form
+const handleInputRupiah = (event) => {
+    let rawValue = event.target.value;
+    
+    // Hapus semua karakter selain angka agar bersih kembali
+    let cleanNumber = rawValue.replace(/\D/g, "");
+    
+    // Simpan ke state form berupa data integer/number murni agar aman dikirim ke database Laravel
+    form.amount = cleanNumber ? parseInt(cleanNumber) : 0;
+};
 </script>
 
 <template>
@@ -168,7 +186,7 @@ const submit = () => {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div
                     class="bg-gradient-to-br from-slate-900 to-slate-800 p-5 rounded-xl text-white shadow-sm relative overflow-hidden">
-                    <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Saldo Live Kas</p>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Saldo Sebenarnya</p>
                     <p class="text-2xl font-black mt-1">Rp{{ stats?.total_saldo?.toLocaleString('id-ID') ?? '0' }}</p>
                     <div class="absolute right-3 bottom-2 text-3xl opacity-10">💰</div>
                 </div>
@@ -224,8 +242,8 @@ const submit = () => {
                                 <thead class="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
                                     <tr class="font-bold">
                                         <th class="px-4 py-3.5 text-center w-12">No</th>
-                                        <th class="px-4 py-3.5">Nama Program Kerja</th>
-                                        <th class="px-4 py-3.5 text-right">Saldo Rill
+                                        <th class="px-4 py-3.5 text-center">Nama Program Kerja</th>
+                                        <th class="px-4 py-3.5 text-center">Saldo Sebenarnya
                                         </th>
                                         <th class="px-4 py-3.5 text-center">Aksi</th>
                                     </tr>
@@ -235,10 +253,10 @@ const submit = () => {
                                         :class="`hover:bg-slate-50 transition cursor-pointer ${selectedProgram?.id === prog.id ? 'bg-orange-50/60 font-bold' : ''}`"
                                         @click="selectProgram(prog)">
                                         <td class="px-4 py-4 text-center font-bold text-slate-900">{{ index + 1 }}</td>
-                                        <td class="px-4 py-4 text-slate-800 font-black uppercase tracking-tight">
+                                        <td class="px-4 py-4 text-center text-slate-800 font-black uppercase tracking-tight">
                                             {{ prog.judul }}
                                         </td>
-                                        <td class="px-4 py-4 text-right text-emerald-600 font-bold font-mono text-sm">
+                                        <td class="px-4 py-4 text-center text-emerald-600 font-bold font-mono text-sm">
                                             Rp{{ Number(prog.saldo_live ?? 0).toLocaleString('id-ID') }}
                                         </td>
                                         <td class="px-4 py-4 text-center" @click.stop>
@@ -386,14 +404,14 @@ const submit = () => {
                         <div class="border-b border-slate-100 pb-2 mb-4">
                             <h2 class="text-sm font-black text-slate-900 uppercase tracking-tight">Otorisasi Finansial
                             </h2>
-                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Sistem Manajemen
+                            <p class="text-[10px] text-slate-900 font-bold uppercase tracking-wider">Sistem Manajemen
                                 Buku Kas Pengeluaran</p>
                         </div>
 
-                        <form @submit.prevent="submit" class="space-y-4 text-xs font-bold text-slate-600">
+                        <form @submit.prevent="submit" class="space-y-4 text-xs font-bold text-slate-900">
 
                             <div>
-                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1.5">Sifat Dana
+                                <label class="block text-[10px] font-black uppercase text-slate-900 mb-1.5">Sifat Dana
                                     Pencairan</label>
                                 <div class="grid grid-cols-2 gap-2">
                                     <button type="button" @click="form.sifat_pengeluaran = 'terikat'"
@@ -408,7 +426,7 @@ const submit = () => {
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Judul Agenda
+                                <label class="block text-[10px] font-black uppercase text-slate-900 mb-1">Judul Agenda
                                     Pengeluaran</label>
                                 <input type="text" v-model="form.judul_pengeluaran"
                                     class="w-full border-slate-200 rounded p-2.5 bg-slate-50 font-bold text-slate-800 text-xs shadow-inner"
@@ -416,7 +434,7 @@ const submit = () => {
                             </div>
 
                             <div v-if="form.sifat_pengeluaran === 'terikat'">
-                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Target Dompet
+                                <label class="block text-[10px] font-black uppercase text-slate-900 mb-1">Target Dompet
                                     Terikat</label>
                                 <select v-model="form.program_id" disabled
                                     class="w-full border-slate-200 rounded p-2.5 bg-slate-100 font-bold text-slate-500 text-xs cursor-not-allowed">
@@ -427,7 +445,7 @@ const submit = () => {
                             </div>
 
                             <div v-if="form.sifat_pengeluaran === 'tidak_terikat'">
-                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">
+                                <label class="block text-[10px] font-black uppercase text-slate-900 mb-1">
                                     Kategori Dana Tidak Terikat
                                 </label>
                                 <select v-model="form.kategori_dana_umum"
@@ -436,20 +454,22 @@ const submit = () => {
                                     <option value="" disabled>-- Pilih Jenis Alokasi Dana --</option>
 
                                     <option v-for="kas in kasUmumList" :key="kas.kategori" :value="kas.kategori">
-                                        {{ kas.kategori.replace('_', ' ').toUpperCase() }} (Saldo: Rp{{
-                                        kas.saldo?.toLocaleString('id-ID') }})
+                                        {{ kas.kategori.replace('_', ' ').toUpperCase() }} 
+                                        (Saldo: Rp{{ Number(kas.saldo || 0).toLocaleString('id-ID') }})
                                     </option>
                                 </select>
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Nominal Cair
+                                <label class="block text-[10px] font-black uppercase text-slate-900 mb-1">Nominal Cair
                                     Aktual</label>
                                 <div class="relative rounded shadow-sm">
                                     <span
-                                        class="absolute left-2.5 top-1/2 -translate-y-1/2 font-black text-slate-400">Rp</span>
-                                    <input type="number" v-model="form.amount"
-                                        class="w-full border-slate-200 rounded p-2.5 pl-7 bg-white font-black text-slate-900 text-sm focus:ring-orange-500"
+                                        class="absolute left-2.5 top-1/2 -translate-y-1/2 font-black text-slate-900">Rp</span>
+
+                                    <input type="text" :value="formatRupiah(form.amount)"
+                                        @input="handleInputRupiah($event)"
+                                        class="w-full border-slate-200 rounded p-2.5 pl-7 bg-white font-black text-slate-900 text-sm focus:ring-orange-500 focus:border-orange-500"
                                         placeholder="Masukkan Jumlah Anggaran..." required>
                                 </div>
                                 <p v-if="form.errors.amount" class="text-[11px] text-red-600 mt-1 font-bold">⚠️ {{
@@ -457,7 +477,7 @@ const submit = () => {
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Keterangan
+                                <label class="block text-[10px] font-black uppercase text-slate-900 mb-1">Keterangan
                                     Memo Internal</label>
                                 <textarea v-model="form.keterangan"
                                     class="w-full border-slate-200 rounded p-2.5 bg-white text-xs font-medium text-slate-800"

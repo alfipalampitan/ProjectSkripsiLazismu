@@ -60,8 +60,32 @@ watch(() => form.pilar_form_id, (newId) => {
 
 // Handle input file dinamis
 const handleFileChange = (fieldName, event) => {
+    const file = event.target.files[0];
+    
+    // 1. Antisipasi jika user membatalkan pilihan file (file kosong)
+    if (!file) return;
+
+    // 2. Batas maksimal 2MB dalam bytes (2 * 1024 * 1024)
+    const maxSizeInBytes = 2 * 1024 * 1024; 
+
+    if (file.size > maxSizeInBytes) {
+        // Tampilkan pop-up SweetAlert2
+        Swal.fire({
+            title: 'Ukuran Berkas Terlalu Besar!',
+            text: `File "${file.name}" berukuran ${(file.size / (1024 * 1024)).toFixed(2)} MB. Maksimal ukuran yang diperbolehkan adalah 2 MB.`,
+            icon: 'error',
+            confirmButtonColor: '#ea580c', // Warna orange biar sinkron dengan tema form-mu
+            confirmButtonText: 'Mengerti, Ganti File'
+        });
+
+        // Reset input file di HTML agar bersih kembali dan user bisa pilih ulang
+        event.target.value = '';
+        return; // Stop eksekusi kode di bawah, file ditolak
+    }
+
+    // 3. Jika lolos validasi (di bawah 2MB), jalankan kode bawaanmu yang ini
     const key = slugify(fieldName);
-    form.berkas_dinamis[key] = event.target.files[0];
+    form.berkas_dinamis[key] = file;
 };
 
 // 3. Submit Data Pengajuan
@@ -108,6 +132,20 @@ const submitPengajuan = () => {
 const formatPilar = (text) => {
     return text.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 };
+
+// Fungsi untuk mengecek apakah file tersebut berupa gambar
+const isImageFile = (file) => {
+    if (!file) return false;
+    return file.type.startsWith('image/');
+};
+
+// Fungsi untuk membuat URL preview instan
+const getFilePreview = (file) => {
+    if (!file) return '';
+    return URL.createObjectURL(file);
+};
+
+
 </script>
 
 <template>
@@ -176,21 +214,36 @@ const formatPilar = (text) => {
                                :required="field.required" />
 
                         <div v-else-if="field.type === 'file'" class="w-full">
-                            <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-white hover:bg-gray-50 transition p-2 relative group">
-                                <div class="flex flex-col items-center justify-center pt-2 pb-2">
-                                    <p class="text-xs text-gray-500"><span class="font-semibold text-orange-500">Klik untuk cari file</span> atau drag berkas ke sini</p>
-                                    <p class="text-[10px] text-gray-400 mt-0.5">Format valid: PDF, JPG, PNG (Maks. 2MB)</p>
-                                </div>
-                                <input type="file" 
-                                       class="hidden" 
-                                       @change="handleFileChange(field.field_name, $event)" 
-                                       :required="field.required" 
-                                       accept=".pdf,.jpg,.jpeg,.png" />
-                            </label>
-                            <p v-if="form.berkas_dinamis[slugify(field.field_name)]" class="text-xs text-emerald-600 font-semibold mt-1.5 flex items-center gap-1">
-                                📎 Berkas Terpilih: {{ form.berkas_dinamis[slugify(field.field_name)].name }}
-                            </p>
-                        </div>
+    <label class="flex flex-col items-center justify-center w-full min-h-24 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-white hover:bg-gray-50 transition p-3 relative group">
+        
+        <div v-if="form.berkas_dinamis[slugify(field.field_name)]" class="flex flex-col items-center justify-center w-full py-1">
+            <div v-if="isImageFile(form.berkas_dinamis[slugify(field.field_name)])" class="mb-2 relative">
+                <img :src="getFilePreview(form.berkas_dinamis[slugify(field.field_name)])" 
+                     class="max-h-20 object-contain rounded-lg border shadow-sm" 
+                     alt="Preview" />
+            </div>
+            <div v-else class="text-3xl mb-1">📄</div>
+            
+            <p class="text-xs text-emerald-600 font-semibold text-center line-clamp-1 px-4">
+                📎 {{ form.berkas_dinamis[slugify(field.field_name)].name }}
+            </p>
+            <p class="text-[10px] text-gray-400 mt-0.5">Klik untuk mengganti file</p>
+        </div>
+
+        <div v-else class="flex flex-col items-center justify-center pt-2 pb-2">
+            <p class="text-xs text-gray-500">
+                <span class="font-semibold text-orange-500">Klik untuk cari file</span> atau drag berkas ke sini
+            </p>
+            <p class="text-[10px] text-gray-400 mt-0.5">Format valid: PDF, JPG, PNG (Maks. 2MB)</p>
+        </div>
+
+        <input type="file" 
+               class="hidden" 
+               @change="handleFileChange(field.field_name, $event)" 
+               :required="field.required" 
+               accept=".pdf,.jpg,.jpeg,.png" />
+    </label>
+</div>
 
                         <input v-else
                                type="text"
