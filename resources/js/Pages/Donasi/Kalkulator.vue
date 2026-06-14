@@ -17,9 +17,15 @@ const props = defineProps({
 const currentTab = ref('penghasilan'); // 'penghasilan' atau 'harta'
 const isLoading = ref(false);          // State loading tombol & overlay
 
-// Konstanta Angka Nishob Standar Lazismu (Emas 85 gram)
-const NISHOB_PER_TAHUN = 81945667;
-const NISHOB_PER_BULAN = Math.round(NISHOB_PER_TAHUN / 12);
+// Konstanta Angka Nishob Dinamis (Mengambil dari setting harga emas admin via Props)
+const NISHOB_PER_TAHUN = computed(() => {
+    // Jika props.system.nishob_tahunan ada, pakai nilainya. Jika kosong/null, gunakan fallback default.
+    return props.system?.nishob_tahunan || 81945667;
+});
+
+const NISHOB_PER_BULAN = computed(() => {
+    return Math.round(NISHOB_PER_TAHUN.value / 12);
+});
 
 // Form State - Zakat Penghasilan
 const formPenghasilan = ref({
@@ -41,6 +47,49 @@ const formatRupiah = (value) => {
     if (!value) return '0';
     return new Intl.NumberFormat('id-ID').format(value);
 };
+
+// =========================================================
+// HELPER FORMAT & PARSE INPUTAN (THOUSAND SEPARATOR)
+// =========================================================
+const formatInputan = (val) => {
+    if (val === null || val === undefined || val === '') return '';
+    const nomor_murni = String(val).replace(/\D/g, '');
+    return nomor_murni.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
+const parseInputan = (val) => {
+    if (!val) return null; // kembalikan null jika kosong agar placeholder fungsi kembali bekerja
+    return parseInt(String(val).replace(/\./g, ''), 10) || 0;
+};
+
+// Proxy Tampilan untuk Zakat Penghasilan
+const displayGaji = computed({
+    get: () => formatInputan(formPenghasilan.value.gaji),
+    set: (val) => { formPenghasilan.value.gaji = parseInputan(val); }
+});
+const displayLain = computed({
+    get: () => formatInputan(formPenghasilan.value.lain),
+    set: (val) => { formPenghasilan.value.lain = parseInputan(val); }
+});
+const displayHutang = computed({
+    get: () => formatInputan(formPenghasilan.value.hutang),
+    set: (val) => { formPenghasilan.value.hutang = parseInputan(val); }
+});
+
+// Proxy Tampilan untuk Zakat Harta
+const displayTabungan = computed({
+    get: () => formatInputan(formHarta.value.tabungan),
+    set: (val) => { formHarta.value.tabungan = parseInputan(val); }
+});
+const displayEmas = computed({
+    get: () => formatInputan(formHarta.value.emas),
+    set: (val) => { formHarta.value.emas = parseInputan(val); }
+});
+const displayProperti = computed({
+    get: () => formatInputan(formHarta.value.properti),
+    set: (val) => { formHarta.value.properti = parseInputan(val); }
+});
+
 // 1. Hitung Total Harta / Pendapatan Bersih
 const totalHarta = computed(() => {
     if (currentTab.value === 'penghasilan') {
@@ -60,9 +109,9 @@ const totalHarta = computed(() => {
 // 2. Tentukan Batas Nishob Aktif
 const nishobAktif = computed(() => {
     if (currentTab.value === 'penghasilan' && formPenghasilan.value.periode === 'bulan') {
-        return NISHOB_PER_BULAN;
+        return NISHOB_PER_BULAN.value;
     }
-    return NISHOB_PER_TAHUN;
+    return NISHOB_PER_TAHUN.value;
 });
 
 // 3. Status Apakah Wajib Zakat
@@ -83,56 +132,43 @@ const jumlahZakat = computed(() => {
 // LOGIKA MENCARI ID PROGRAM SUNGGURAN (0 TYPO)
 // =========================================================
 const targetProgramId = computed(() => {
-    // 1. Pastikan props.programs benar-benar ada isinya dan berupa array
     if (!props.programs || !Array.isArray(props.programs) || props.programs.length === 0) {
         return null;
     }
 
     if (currentTab.value === 'penghasilan') {
-        // Cari program yang judulnya mengandung kata "penghasilan" atau "profesi"
         const prog = props.programs.find(p => {
             if (!p) return false;
-            // Ambil kolom 'judul' atau 'name' dari database, ubah ke string huruf kecil
             const namaString = String(p.judul || p.name || '').toLowerCase();
             return namaString.includes('penghasilan') || namaString.includes('profesi');
         });
 
-        // Jika ketemu return id-nya. Jika tidak ketemu, cari data dengan id = 3 (Zakat Penghasilan di DB kamu)
         if (prog) return prog.id;
         const fallback = props.programs.find(p => String(p.id) === '3');
         return fallback ? fallback.id : props.programs[0].id;
 
     } else {
-        // Cari program yang judulnya mengandung kata "maal" atau "harta"
         const prog = props.programs.find(p => {
             if (!p) return false;
             const namaString = String(p.judul || p.name || '').toLowerCase();
             return namaString.includes('maal') || namaString.includes('harta') || namaString.includes('mal');
         });
 
-        // Jika ketemu return id-nya. Jika tidak ketemu, cari data dengan id = 1 (Zakat MAAL di DB kamu)
         if (prog) return prog.id;
         const fallback = props.programs.find(p => String(p.id) === '1');
         return fallback ? fallback.id : props.programs[0].id;
     }
 });
 
-
-
 // Fungsi Reset Form saat pindah Tab
 const switchTab = (tab) => {
     currentTab.value = tab;
 };
 
-
-
 // =========================================================
 // INTEGRASI MENEMBAK PAYMENTCONTROLLER (MIDTRANS) & SWAL
 // =========================================================
 const tunaikanZakat = async () => {
-    // ==========================================
-    // DEBUGGING MODE: CEK ISI PROPS DAN TARGET ID
-    // ==========================================
     console.log("Isi props.programs:", props.programs);
     console.log("ID Program yang terkunci:", targetProgramId.value);
     console.log("Nominal Zakat:", jumlahZakat.value);
@@ -158,7 +194,6 @@ const tunaikanZakat = async () => {
         return;
     }
 
-    // Jika targetProgramId ternyata bernilai null / undefined
     if (!targetProgramId.value) {
         Swal.fire({
             icon: 'error',
@@ -195,26 +230,14 @@ const tunaikanZakat = async () => {
     });
 
     try {
-        // Amankan format nama agar hanya huruf murni (menghindari block regex 422 PaymentController)
-        const namaBersih = props.auth?.user?.name
-            ? props.auth.user.name.replace(/[^a-zA-Z\s]/g, "")
-            : 'Hamba Allah';
-
         const response = await axios.post('/payment/token', {
-            // 1. Cek apakah controller kamu minta nama 'program_id' atau 'program_donasi_id'
             program_id: targetProgramId.value,
-
-            // 2. Kirim nominal dengan beberapa variasi nama field (agar otomatis cocok dengan controller)
             total: jumlahZakat.value,
-            nominal: jumlahZakat.value,    // Kirim ini jika di donasi biasa pakai field 'nominal'
-            amount: jumlahZakat.value,     // Kirim ini jika donasi biasa pakai field 'amount'
-
-            // 3. Data pembayar (Gunakan filter regex huruf murni yang aman)
+            nominal: jumlahZakat.value,
+            amount: jumlahZakat.value,
             nama: props.auth?.user?.name ? props.auth.user.name.replace(/[^a-zA-Z\s]/g, "") : 'Hamba Allah',
             email: props.auth?.user?.email || 'hambaallah@gmail.com',
             nomor_hp: props.auth?.user?.phone || props.auth?.user?.nomor_hp || '081234567890',
-
-            // 4. Keterangan transaksi
             keterangan: `Zakat ${currentTab.value === 'penghasilan' ? 'Penghasilan' : 'Maal'} terhitung otomatis.`,
         });
 
@@ -242,7 +265,6 @@ const tunaikanZakat = async () => {
         Swal.close();
         console.error("Detail Error Axios:", error);
 
-        // Menangkap pesan eror validasi spesifik dari Laravel (jika ada)
         const validasiPesan = error.response?.data?.errors
             ? Object.values(error.response.data.errors).flat().join('<br>')
             : (error.response?.data?.message || 'Gagal memproses pembuatan tagihan ke server Midtrans.');
@@ -265,27 +287,22 @@ const tunaikanZakat = async () => {
 
         <div class="text-center mb-10 max-w-xl">
             <h1 class="text-3xl font-bold tracking-tight text-slate-900 uppercase">Kalkulator Zakat</h1>
-            <p class="text-slate-500 mt-2 text-sm">Yuk hitung berapa zakat yang harus kamu keluarkan tahun ini dengan
-                mudah dan transparan.</p>
+            <p class="text-slate-500 mt-2 text-sm">Yuk hitung berapa zakat yang harus kamu keluarkan tahun ini dengan mudah dan transparan.</p>
         </div>
 
-        <div
-            class="w-full max-w-5xl bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div class="w-full max-w-5xl bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
 
             <div class="lg:col-span-7 flex flex-col gap-6">
 
                 <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Pilih Jenis
-                        Zakat</label>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Pilih Jenis Zakat</label>
                     <div class="grid grid-cols-2 gap-4">
                         <button type="button" @click="switchTab('penghasilan')" :class="[
                             'flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all duration-200',
                             currentTab === 'penghasilan' ? 'border-orange-500 bg-orange-50/50 text-orange-600' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
                         ]">
                             <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
-                                </path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                             </svg>
                             <span class="text-sm font-semibold">Penghasilan</span>
                         </button>
@@ -295,9 +312,7 @@ const tunaikanZakat = async () => {
                             currentTab === 'harta' ? 'border-orange-500 bg-orange-50/50 text-orange-600' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
                         ]">
                             <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                                </path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <span class="text-sm font-semibold">Harta (Maal)</span>
                         </button>
@@ -309,98 +324,65 @@ const tunaikanZakat = async () => {
                 <div v-if="currentTab === 'penghasilan'" class="space-y-5 animate-fadeIn">
                     <div class="flex items-center gap-6 mb-2">
                         <label class="flex items-center text-sm font-medium text-slate-700 cursor-pointer">
-                            <input type="radio" v-model="formPenghasilan.periode" value="bulan"
-                                class="w-4 h-4 text-orange-500 focus:ring-orange-500 border-slate-300 mr-2"> Perbulan
+                            <input type="radio" v-model="formPenghasilan.periode" value="bulan" class="w-4 h-4 text-orange-500 focus:ring-orange-500 border-slate-300 mr-2"> Perbulan
                         </label>
                         <label class="flex items-center text-sm font-medium text-slate-700 cursor-pointer">
-                            <input type="radio" v-model="formPenghasilan.periode" value="tahun"
-                                class="w-4 h-4 text-orange-500 focus:ring-orange-500 border-slate-300 mr-2"> Pertahun
+                            <input type="radio" v-model="formPenghasilan.periode" value="tahun" class="w-4 h-4 text-orange-500 focus:ring-orange-500 border-slate-300 mr-2"> Pertahun
                         </label>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">Pendapatan / Gaji Bulanan</label>
                         <div class="relative rounded-lg shadow-sm">
-                            <div
-                                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">
-                                Rp</div>
-                            <input type="number" v-model.number="formPenghasilan.gaji"
-                                class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm"
-                                placeholder="0">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">Rp</div>
+                            <input type="text" v-model="displayGaji" class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm" placeholder="0">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Pendapatan Lain Bulanan
-                            (Opsional)</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Pendapatan Lain Bulanan (Opsional)</label>
                         <div class="relative rounded-lg shadow-sm">
-                            <div
-                                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">
-                                Rp</div>
-                            <input type="number" v-model.number="formPenghasilan.lain"
-                                class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm"
-                                placeholder="0">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">Rp</div>
+                            <input type="text" v-model="displayLain" class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm" placeholder="0">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Hutang / Cicilan Bulanan
-                            (Opsional)</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Hutang / Cicilan Bulanan (Opsional)</label>
                         <div class="relative rounded-lg shadow-sm">
-                            <div
-                                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">
-                                Rp</div>
-                            <input type="number" v-model.number="formPenghasilan.hutang"
-                                class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm"
-                                placeholder="0">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">Rp</div>
+                            <input type="text" v-model="displayHutang" class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm" placeholder="0">
                         </div>
                     </div>
                 </div>
 
                 <div v-else-if="currentTab === 'harta'" class="space-y-5 animate-fadeIn">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Uang Tunai / Tabungan /
-                            Deposito</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Uang Tunai / Tabungan / Deposito</label>
                         <div class="relative rounded-lg shadow-sm">
-                            <div
-                                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">
-                                Rp</div>
-                            <input type="number" v-model.number="formHarta.tabungan"
-                                class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm"
-                                placeholder="0">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">Rp</div>
+                            <input type="text" v-model="displayTabungan" class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm" placeholder="0">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Emas, Perak, atau Permata (Nilai
-                            Uang)</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Emas, Perak, atau Permata (Nilai Uang)</label>
                         <div class="relative rounded-lg shadow-sm">
-                            <div
-                                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">
-                                Rp</div>
-                            <input type="number" v-model.number="formHarta.emas"
-                                class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm"
-                                placeholder="0">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">Rp</div>
+                            <input type="text" v-model="displayEmas" class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm" placeholder="0">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Properti & Kendaraan (Investasi /
-                            Non-Pokok)</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">Properti & Kendaraan (Investasi / Non-Pokok)</label>
                         <div class="relative rounded-lg shadow-sm">
-                            <div
-                                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">
-                                Rp</div>
-                            <input type="number" v-model.number="formHarta.properti"
-                                class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm"
-                                placeholder="0">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">Rp</div>
+                            <input type="text" v-model="displayProperti" class="block w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm" placeholder="0">
                         </div>
                     </div>
                 </div>
 
             </div>
 
-            <div
-                class="lg:col-span-5 bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col justify-between h-fit gap-6">
+            <div class="lg:col-span-5 bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col justify-between h-fit gap-6">
                 <div>
                     <h3 class="text-lg font-bold text-slate-900">Nilai Zakat</h3>
-                    <p class="text-xs text-slate-500 mt-1">Berikut hasil perhitungan real-time berdasarkan data yang
-                        Anda masukkan.</p>
+                    <p class="text-xs text-slate-500 mt-1">Berikut hasil perhitungan real-time berdasarkan data yang Anda masukkan.</p>
 
                     <div :class="[
                         'mt-5 p-3 rounded-xl text-center font-medium text-sm border transition-all duration-300',
@@ -415,24 +397,21 @@ const tunaikanZakat = async () => {
                     <div class="mt-6 space-y-4">
                         <div>
                             <label class="block text-xs text-slate-500 mb-1">Total Harta / Pendapatan</label>
-                            <div
-                                class="flex items-center justify-between font-semibold text-slate-800 bg-white px-3 py-2.5 rounded-lg border border-slate-200">
+                            <div class="flex items-center justify-between font-semibold text-slate-800 bg-white px-3 py-2.5 rounded-lg border border-slate-200">
                                 <span>Rp</span>
                                 <span>{{ formatRupiah(totalHarta) }}</span>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs text-slate-500 mb-1">Ambang Batas (Nishob)</label>
-                            <div
-                                class="flex items-center justify-between text-slate-600 bg-slate-200/50 px-3 py-2.5 rounded-lg border border-slate-200 text-sm">
+                            <div class="flex items-center justify-between text-slate-600 bg-slate-200/50 px-3 py-2.5 rounded-lg border border-slate-200 text-sm">
                                 <span>Rp</span>
                                 <span>{{ formatRupiah(nishobAktif) }}</span>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs text-slate-500 mb-1">Jumlah Zakat yang Harus Dibayar</label>
-                            <div
-                                class="flex items-center justify-between font-bold text-lg text-slate-900 bg-white px-3 py-2.5 rounded-lg border-2 border-slate-200">
+                            <div class="flex items-center justify-between font-bold text-lg text-slate-900 bg-white px-3 py-2.5 rounded-lg border-2 border-slate-200">
                                 <span>Rp</span>
                                 <span class="text-orange-600">{{ formatRupiah(jumlahZakat) }}</span>
                             </div>
@@ -440,8 +419,7 @@ const tunaikanZakat = async () => {
                     </div>
                 </div>
 
-                <button @click="tunaikanZakat"
-                    class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3.5 rounded-xl transition-colors duration-150">
+                <button @click="tunaikanZakat" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3.5 rounded-xl transition-colors duration-150">
                     Tunaikan Zakat Sekarang
                 </button>
             </div>
@@ -452,7 +430,6 @@ const tunaikanZakat = async () => {
 </template>
 
 <style scoped>
-/* Opsional: Animasi fade-in halus saat ganti inputan form */
 .animate-fadeIn {
     animation: fadeIn 0.3s ease-in-out;
 }
@@ -462,7 +439,6 @@ const tunaikanZakat = async () => {
         opacity: 0;
         transform: translateY(4px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);

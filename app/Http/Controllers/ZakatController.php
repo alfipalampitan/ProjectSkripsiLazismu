@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Program; // <--- 1. WAJIB IMPORT MODEL PROGRAM DI SINI
+use App\Models\Program; 
+use App\Models\Setting; // <-- Pastikan model Setting di-import
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -11,19 +12,25 @@ class ZakatController extends Controller
     // Menampilkan halaman kalkulator
     public function index()
     {
-        // 2. Ambil data program yang kategori-nya 'Zakat' (Sesuai isi DB di HeidiSQL-mu)
         $programs = Program::where('kategori', 'Zakat')->get();
 
-        // 3. Kirim data $programs ke dalam Vue lewat properti array
+        // Ambil harga emas pakai helper model kamu, default 1410000 jika kosong di DB
+        $hargaEmas = (int) Setting::getVal('harga_emas', 1410000); 
+
+        // Hitung Nishob Tahunan (Harga Emas x 85 gram)
+        $nishobTahunan = $hargaEmas * 85;
+
         return Inertia::render('Donasi/Kalkulator', [
-            'programs' => $programs
+            'programs' => $programs,
+            'system' => [
+                'nishob_tahunan' => $nishobTahunan // Dilempar ke Vue kalkulator
+            ]
         ]);
     }
 
     // Memproses transaksi zakat
     public function checkout(Request $request)
     {
-        // 1. Validasi input dari frontend
         $request->validate([
             'jenis_zakat' => 'required|string',
             'total_harta' => 'required|numeric',

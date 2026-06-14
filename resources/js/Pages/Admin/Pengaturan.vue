@@ -1,21 +1,39 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, computed } from 'vue'; // Tambahkan computed
 import Swal from 'sweetalert2';
 
 const props = defineProps({
-    settings: Object, // Asumsi data setting dikirim dari controller
+    settings: Object,
 });
 
+// Inisialisasi form dengan tambahan field harga_emas
 const form = useForm({
     nama_organisasi: props.settings?.site_name || '',
     alamat: props.settings?.site_address || '',
     nomor_telepon: props.settings?.site_phone || '',
+    harga_emas: props.settings?.harga_emas || '', // <-- Tambahkan ini
     logo: null,
 });
 
 const logoPreview = ref(null);
+
+// Menghitung otomatis Nishob Tahunan (85 gram emas) untuk visualisasi staff
+const kalkulasiNishobTahunan = computed(() => {
+    const harga = parseFloat(form.harga_emas) || 0;
+    return harga * 85;
+});
+
+// Menghitung otomatis Nishob Bulanan
+const kalkulasiNishobBulanan = computed(() => {
+    return Math.round(kalkulasiNishobTahunan.value / 12);
+});
+
+// Helper Format Rupiah untuk tampilan teks nishob
+const formatRupiah = (value) => {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
+};
 
 const handleLogoChange = (e) => {
     const file = e.target.files[0];
@@ -30,15 +48,11 @@ const submit = () => {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
-            // Opsional: Hapus preview lokal setelah berhasil agar 
-            // tampilan mengambil data terbaru dari $page.props.system.logo
-            logoPreview.value = null; 
-            
-            Swal.fire('Berhasil', 'Logo sistem telah diperbarui!', 'success');
+            logoPreview.value = null;
+            Swal.fire('Berhasil', 'Pengaturan sistem berhasil diperbarui!', 'success');
         },
     });
 };
-
 </script>
 
 <template>
@@ -99,6 +113,38 @@ const submit = () => {
                                     Pilih
                                     <input type="file" @change="handleLogoChange" class="hidden" accept="image/*" />
                                 </label>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-gray-100 pt-6">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Harga Emas Logam Mulia (Per
+                                Gram)</label>
+                            <div class="relative rounded-2xl shadow-sm">
+                                <div
+                                    class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 font-semibold text-sm">
+                                    Rp
+                                </div>
+                                <input v-model.number="form.harga_emas" type="number"
+                                    class="w-full pl-12 rounded-2xl border-gray-200 focus:ring-orange-500 focus:border-orange-500 shadow-sm transition"
+                                    placeholder="Contoh: 1400000">
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1.5">Masukkan harga emas murni hari ini. Sistem akan
+                                otomatis menghitung nishob zakat berdasarkan standar 85 gram emas.</p>
+
+                            <div v-if="form.harga_emas > 0"
+                                class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-orange-50/70 p-4 rounded-2xl border border-orange-100 animate-fadeIn">
+                                <div>
+                                    <span class="block text-xs text-orange-600 font-medium">Estimasi Nishob /
+                                        Tahun:</span>
+                                    <span class="text-base font-bold text-slate-800">{{
+                                        formatRupiah(kalkulasiNishobTahunan) }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-xs text-orange-600 font-medium">Estimasi Nishob /
+                                        Bulan:</span>
+                                    <span class="text-base font-bold text-slate-800">{{
+                                        formatRupiah(kalkulasiNishobBulanan) }}</span>
+                                </div>
                             </div>
                         </div>
 

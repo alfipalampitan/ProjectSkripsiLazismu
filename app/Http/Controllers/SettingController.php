@@ -27,6 +27,7 @@ class SettingController extends Controller
             'nama_organisasi' => 'required|string|max:255',
             'alamat' => 'required|string',
             'nomor_telepon' => 'required|string|max:20',
+            'harga_emas'      => 'required|numeric|min:0',
             'logo' => 'nullable|image|mimes:jpg,jpeg,png|max:10000',
         ]);
 
@@ -35,6 +36,7 @@ class SettingController extends Controller
             'site_name' => $request->nama_organisasi,
             'site_address' => $request->alamat,
             'site_phone' => $request->nomor_telepon,
+            'harga_emas'   => $request->harga_emas,
         ];
 
         foreach ($dataTeks as $key => $value) {
